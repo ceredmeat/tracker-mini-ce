@@ -1,5 +1,6 @@
 #include "mtStructs.h"
 #include "patternEditor/patternEditor.h"
+#include "ceMods.h"
 #include <assert.h>
 #include <limits.h>
 #include <mtAudioExport.h>
@@ -49,6 +50,7 @@ static void functPastePattern();
 static void functNamePattern();
 static void functNameTrack();
 static void functTrackLength(uint8_t state);
+static void functHumanize();
 
 static void functClockWarningPopupButtons(uint8_t button, uint8_t state);
 
@@ -4013,6 +4015,31 @@ static void functInvert()
 }
 
 // ##############################################################################################
+// ###############################           Humanize           #################################
+// ##############################################################################################
+static void functHumanize()
+{
+    uint8_t timing = ceMods::humanizeTiming();
+    uint8_t volume = ceMods::humanizeVolume();
+
+    if (timing == 0 && volume == 0)
+    {
+        mtPopups.show(0, "Set Humanize ranges in Config > Project Settings.");
+        return;
+    }
+
+    newFileManager.storePatternUndoRevision();
+
+    sendSelection();
+    if (sequencer.humanizeSelectedSteps(timing, volume))
+    {
+        newFileManager.setActualPatternStructChanged();
+    }
+
+    PTE->refreshPattern();
+}
+
+// ##############################################################################################
 // ###############################       Duplicate pattern      #################################
 // ##############################################################################################
 static void functDuplicatePattern()
@@ -5222,6 +5249,8 @@ void cPatternEditor::setActionButtonPage3Funct()
     ip->setButtonObj(interfaceButton0, buttonPress, functNamePattern);
     ip->setButtonObj(interfaceButton1, buttonPress, functNameTrack);
     ip->setButtonObj(interfaceButton2, functTrackLength);
+    if (editMode)
+        ip->setButtonObj(interfaceButton3, buttonPress, functHumanize);
 
     ip->setButtonObj(interfaceButton7, buttonPress, functNextActionButtonPage);
 }

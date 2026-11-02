@@ -905,6 +905,8 @@ class Sequencer
     void handleNoteOn(byte channel, byte pitch, int8_t volume, int16_t source);
     void handleNoteOff(byte channel, byte pitch, byte volume, int16_t source);
     void updateTrackLengths(strPattern* pattern);
+    // Humanize (tracker-mini-ce): random micro-move and volume on the selected notes
+    bool humanizeSelectedSteps(uint8_t timingRange, uint8_t volumeRange);
 
     // Per-track loop lengths (tracker-mini-ce "Track Length").
     // A pattern uses them only when rezerwa2 == kTrackLoopMagic. Then track[t].length (t >= 1)
@@ -990,6 +992,7 @@ class Sequencer
     void reset_actual_pos(uint8_t row, uint8_t delta = 0);
     void resetChanceState(void);
     bool isLegatoStep(uint8_t row, const strPlayer::strPlayerTrack::strSendStep* next);
+    void applyGlobalSwing(bool resetToggle);
     bool evaluateChanceFx(uint8_t row, uint8_t value);
 
   public:
