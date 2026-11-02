@@ -1,4 +1,5 @@
 #include <algorithm>
+#include "ceMods.h"
 #include <numeric>
 
 #ifdef FEATURE_SYNTH
@@ -1319,6 +1320,7 @@ AUDIO_CORE_RAM void Sequencer::play(uint8_t fromPos)
 
     reset_actual_pos();
     resetChanceState();
+    applyGlobalSwing(true);
 
     player.isStop = 0;
     player.isPlay = 1;
@@ -1879,6 +1881,8 @@ void Sequencer::switchRowStep(uint8_t row) // przełączamy stepy w zależności
 
     if (player.endOfPattern)
     {
+        applyGlobalSwing(false);
+
         bool isNextPatternAvailable = 0; // jeśli 0 to song sie skonczyl
         bool patternSwitched = false;
         player.breakPattern = 0;
@@ -2159,6 +2163,19 @@ AUDIO_CORE_RAM void Sequencer::reset_actual_pos(uint8_t row, uint8_t delta /* = 
     {
         player.track[row].actual_pos = MINSTEP + delta;
     }
+}
+
+// Global Swing (tracker-mini-ce): when the project sets one, every take and every pattern
+// start uses it; a Swing FX still changes it until the next pattern start.
+AUDIO_CORE_RAM void Sequencer::applyGlobalSwing(bool resetToggle)
+{
+    int value = ceMods::swingValue();
+    if (value == 0)
+        return;
+
+    player.swing.setSwing(value);
+    if (resetToggle)
+        player.swing.stepToogle = 0;
 }
 
 AUDIO_CORE_RAM void Sequencer::resetChanceState(void)

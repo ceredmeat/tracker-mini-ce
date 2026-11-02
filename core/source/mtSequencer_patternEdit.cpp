@@ -467,6 +467,39 @@ void Sequencer::fillRandomInstruments(int16_t fillStep, int16_t from, int16_t to
     }
 }
 
+bool Sequencer::humanizeSelectedSteps(uint8_t timingRange, uint8_t volumeRange)
+{
+    strSelection* sel = &selection;
+    if (!isSelectionCorrect(sel) || (timingRange == 0 && volumeRange == 0))
+        return false;
+
+    bool changed = false;
+    for (uint8_t t = sel->firstTrack; t <= sel->lastTrack; t++)
+    {
+        for (uint8_t s = sel->firstStep; s <= sel->lastStep; s++)
+        {
+            strPattern::strTrack::strStep* step = &currentPattern->track[t].step[s];
+            if (step->note < 0)
+                continue;
+
+            if (timingRange > 0) // micro-move only delays, 0..100 of a step
+            {
+                int base = step->micromove < 0 ? 0 : step->micromove;
+                step->micromove =
+                  clamp<int>(base + utilMathRandom::random(0, timingRange + 1), 0, 100);
+            }
+            if (volumeRange > 0) // lower the volume by up to the range
+            {
+                int base = step->volume < 0 ? 100 : step->volume;
+                step->volume =
+                  clamp<int>(base - utilMathRandom::random(0, volumeRange + 1), 0, 100);
+            }
+            changed = true;
+        }
+    }
+    return changed;
+}
+
 void Sequencer::invertSelectedSteps(uint8_t elements)
 {
 

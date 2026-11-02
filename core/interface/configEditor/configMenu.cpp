@@ -3,6 +3,7 @@
 
 #include "configEditor/configMenuActions.h"
 #include "ThemeManager.h"
+#include "fileManager.h"
 
 #include "imageViewer/imageViewerDefs.h"
 
@@ -19,15 +20,15 @@
 
 #ifdef TRACKER_MINI
 constexpr uint8_t baseMenuGroupCount = 8;
-constexpr uint8_t projectMenuGroupCount = 10;
+constexpr uint8_t projectMenuGroupCount = 13;
 constexpr uint8_t generalMenuGroupCount = 9;
 #elif defined(PLATFORM_IMX)
 constexpr uint8_t baseMenuGroupCount = 7;
-constexpr uint8_t projectMenuGroupCount = 10;
+constexpr uint8_t projectMenuGroupCount = 13;
 constexpr uint8_t generalMenuGroupCount = 12;
 #else
 constexpr uint8_t baseMenuGroupCount = 6;
-constexpr uint8_t projectMenuGroupCount = 10;
+constexpr uint8_t projectMenuGroupCount = 13;
 constexpr uint8_t generalMenuGroupCount = 12;
 #endif
 
@@ -82,6 +83,24 @@ cMenuItem melLimiterMode(menuProject, "Limiter mode", limiterDesc, menuTypeItemL
 cMenuItem melSendsMode(menuProject, "Sends mode", sendsDesc,  menuTypeItemListTextWithAction, &setupSendsMode);
 cMenuItem melHeadroomMode(menuProject, "Extra headroom", headroomDesc,  menuTypeItemListTextWithAction, &setupHeadroomMode);
 cMenuItem melSnapToZeroMode(menuProject, "Snap to zero", snapToZeroDesc,  menuTypeItemListTextWithAction, &setupSnapToZeroMode);
+
+// tracker-mini-ce: Global Swing and Humanize (stored in the project, see ceMods.h)
+static const char* const globalSwingTexts[52] = { "Off", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59", "60", "61", "62", "63", "64", "65", "66", "67", "68", "69", "70", "71", "72", "73", "74", "75" };
+static const char* const humanizeTexts[51] = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50" };
+static const char globalSwingDesc[] = { "Swing used by every take and every pattern start of this "
+                                        "project. A Swing FX still changes it until the next "
+                                        "pattern starts. Off keeps the normal behaviour." };
+static const char humanizeTimingDesc[] = { "Largest random delay (micro-move, 0-50 % of a step) "
+                                           "that Humanize adds to the selected notes." };
+static const char humanizeVolumeDesc[] = { "Largest random volume drop (0-50) that Humanize "
+                                           "applies to the selected notes." };
+static void setCeModsSetting() { newFileManager.setProjectStructChanged(); }
+const strItemTypeListTextWithAction setupGlobalSwing{ &mtProject.values.midiInstrument[kMidiInstrumentsCount - 1].reserved[0], 52, globalSwingTexts, setCeModsSetting };
+const strItemTypeListTextWithAction setupHumanizeTiming{ &mtProject.values.midiInstrument[kMidiInstrumentsCount - 1].reserved[1], 51, humanizeTexts, setCeModsSetting };
+const strItemTypeListTextWithAction setupHumanizeVolume{ &mtProject.values.midiInstrument[kMidiInstrumentsCount - 1].reserved[2], 51, humanizeTexts, setCeModsSetting };
+cMenuItem melGlobalSwing(menuProject, "Global swing", globalSwingDesc, menuTypeItemListTextWithAction, &setupGlobalSwing);
+cMenuItem melHumanizeTiming(menuProject, "Humanize timing", humanizeTimingDesc, menuTypeItemListTextWithAction, &setupHumanizeTiming);
+cMenuItem melHumanizeVolume(menuProject, "Humanize volume", humanizeVolumeDesc, menuTypeItemListTextWithAction, &setupHumanizeVolume);
 
 // general
 const strItemTypeListTextWithAction setupRadioRegion{ &mtConfig.general.radioRegion, 4, radioRegion, setRadioRegion };
