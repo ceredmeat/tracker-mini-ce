@@ -969,6 +969,26 @@ class Sequencer
     void reset_actual_pos(void);
     void reset_actual_pos(uint8_t row, uint8_t delta = 0);
     void resetChanceState(void);
+
+    // Interpolate (tracker-mini-ce): a CC FX (a-f) on a MIDI or synth track ramps to the
+    // next step on the same track with the same letter.
+    struct strCcRamp
+    {
+        bool active;
+        uint8_t from;
+        uint8_t to;
+        uint8_t slot;       // FX slot of the starting step (synth value source)
+        uint8_t instrument; // same instrument at both ends
+        uint8_t pattern;    // pattern the ramp was found in
+        uint16_t length;    // in micro-steps (48 per step)
+        uint16_t elapsed;
+        int16_t lastSent;
+    };
+    strCcRamp ccRamp[kAllTracks][6];
+    uint8_t ccRampNext = 0; // round-robin start for the MIDI rate cap
+    void interpolateReset(void);
+    void interpolateStartStep(uint8_t row);
+    void interpolateTick(void);
     bool evaluateChanceFx(uint8_t row, uint8_t value);
 
     void play_microStep(int row);

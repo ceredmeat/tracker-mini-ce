@@ -3,6 +3,7 @@
 
 #include "configEditor/configMenuActions.h"
 #include "ThemeManager.h"
+#include "fileManager.h"
 
 #include "imageViewer/imageViewerDefs.h"
 
@@ -19,15 +20,15 @@
 
 #ifdef TRACKER_MINI
 constexpr uint8_t baseMenuGroupCount = 8;
-constexpr uint8_t projectMenuGroupCount = 10;
+constexpr uint8_t projectMenuGroupCount = 12;
 constexpr uint8_t generalMenuGroupCount = 9;
 #elif defined(PLATFORM_IMX)
 constexpr uint8_t baseMenuGroupCount = 7;
-constexpr uint8_t projectMenuGroupCount = 10;
+constexpr uint8_t projectMenuGroupCount = 12;
 constexpr uint8_t generalMenuGroupCount = 12;
 #else
 constexpr uint8_t baseMenuGroupCount = 6;
-constexpr uint8_t projectMenuGroupCount = 10;
+constexpr uint8_t projectMenuGroupCount = 12;
 constexpr uint8_t generalMenuGroupCount = 12;
 #endif
 
@@ -82,6 +83,17 @@ cMenuItem melLimiterMode(menuProject, "Limiter mode", limiterDesc, menuTypeItemL
 cMenuItem melSendsMode(menuProject, "Sends mode", sendsDesc,  menuTypeItemListTextWithAction, &setupSendsMode);
 cMenuItem melHeadroomMode(menuProject, "Extra headroom", headroomDesc,  menuTypeItemListTextWithAction, &setupHeadroomMode);
 cMenuItem melSnapToZeroMode(menuProject, "Snap to zero", snapToZeroDesc,  menuTypeItemListTextWithAction, &setupSnapToZeroMode);
+
+// tracker-mini-ce: Interpolate (stored in the project, see ceMods.h)
+static const char interpMidiDesc[] = { "On: a CC FX (a-f) on a MIDI track ramps smoothly to the "
+                                       "next step on that track with the same CC letter." };
+static const char interpSynthDesc[] = { "On: a CC FX (a-f) on a synth track ramps its Macro "
+                                        "smoothly to the next step with the same letter." };
+static void setCeModsInterpSetting() { newFileManager.setProjectStructChanged(); }
+const strItemTypeListTextWithAction setupInterpMidi{ &mtProject.values.midiInstrument[kMidiInstrumentsCount - 1].reserved[3], 2, onOffStateTexts, setCeModsInterpSetting };
+const strItemTypeListTextWithAction setupInterpSynth{ &mtProject.values.midiInstrument[kMidiInstrumentsCount - 1].reserved[4], 2, onOffStateTexts, setCeModsInterpSetting };
+cMenuItem melInterpMidi(menuProject, "Interp. MIDI CC", interpMidiDesc, menuTypeItemListTextWithAction, &setupInterpMidi);
+cMenuItem melInterpSynth(menuProject, "Interp. synths", interpSynthDesc, menuTypeItemListTextWithAction, &setupInterpSynth);
 
 // general
 const strItemTypeListTextWithAction setupRadioRegion{ &mtConfig.general.radioRegion, 4, radioRegion, setRadioRegion };
