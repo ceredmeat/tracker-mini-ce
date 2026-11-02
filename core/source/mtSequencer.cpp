@@ -1742,6 +1742,8 @@ void Sequencer::switchRowStep(uint8_t row) // przełączamy stepy w zależności
             ownLast = trackLength;
     }
 
+    bool patternWrappedBack = false; // used by PLAYMODE_BACKWARD
+
     player.endOfPattern = false;
     switch (playMode)
     {
@@ -1802,7 +1804,7 @@ void Sequencer::switchRowStep(uint8_t row) // przełączamy stepy w zależności
         case PLAYMODE_BACKWARD:
 
             player.track[row].actual_pos_absolute++;
-            bool patternWrappedBack = false;
+            patternWrappedBack = false;
             if ((player.track[row].actual_pos_absolute > trackLength) || (player.breakPattern))
             {
                 player.track[row].actual_pos_absolute = 0;
