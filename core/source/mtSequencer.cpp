@@ -2180,7 +2180,7 @@ AUDIO_CORE_RAM void Sequencer::interpolateReset(void)
 
 static int8_t findCcSlot(const Sequencer::strPattern::strTrack::strStep& step, uint8_t fxType)
 {
-    for (int slot = 0; slot < kStepFxSlots; slot++)
+    for (int slot = 0; slot < Sequencer::kStepFxSlots; slot++)
     {
         if (step.fx[slot].type == fxType)
         {
