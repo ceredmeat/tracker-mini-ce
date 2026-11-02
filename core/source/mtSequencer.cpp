@@ -1732,6 +1732,16 @@ void Sequencer::switchRowStep(uint8_t row) // przełączamy stepy w zależności
         trackLength = player.performance.patternLength;
     }
 
+    // Track Length: this track's own loop (equal to trackLength when not used)
+    uint8_t ownLast = trackLength;
+    if (!(player.performanceMode && isPerformanceTrack(row)) &&
+        player.performance.patternLength == -1 && !player.selectionMode)
+    {
+        ownLast = getTrackLoopLast(currentPattern, row);
+        if (ownLast > trackLength)
+            ownLast = trackLength;
+    }
+
     player.endOfPattern = false;
     switch (playMode)
     {
@@ -1751,6 +1761,7 @@ void Sequencer::switchRowStep(uint8_t row) // przełączamy stepy w zależności
 
             player.track[row].actual_pos_absolute++;
 
+            bool patternWrapped = false;
             if ((player.track[row].actual_pos_absolute > lastPos) || (player.breakPattern))
             {
                 player.track[row].actual_pos_absolute = startPos;
@@ -1759,10 +1770,15 @@ void Sequencer::switchRowStep(uint8_t row) // przełączamy stepy w zależności
                     player.endOfPattern = true;
                 }
                 player.track[row].actual_pos_absolute = 0;
+                patternWrapped = true;
             }
 
+            // a shorter track loops at its own end and lines up again when the pattern ends
+            int ownLastPos = player.selectionModeLooped ? lastPos : ownLast;
+
             player.track[row].actual_pos++;
-            if ((player.track[row].actual_pos > lastPos) || (player.breakPattern))
+            if ((player.track[row].actual_pos > ownLastPos) || (player.breakPattern) ||
+                (patternWrapped && ownLastPos < lastPos))
             {
                 player.track[row].actual_pos = startPos;
                 player.track[row].passCount++;
@@ -1775,7 +1791,8 @@ void Sequencer::switchRowStep(uint8_t row) // przełączamy stepy w zależności
                     player.track[row].performanceSourcePattern = -1;
                 }
 
-                if (row == kAllTracks - 1)
+                // a short last track looping on its own doesn't end the pattern
+                if (row == kAllTracks - 1 && (ownLastPos >= lastPos || patternWrapped))
                 {
                     player.endOfPattern = true;
                 }
@@ -1785,6 +1802,7 @@ void Sequencer::switchRowStep(uint8_t row) // przełączamy stepy w zależności
         case PLAYMODE_BACKWARD:
 
             player.track[row].actual_pos_absolute++;
+            bool patternWrappedBack = false;
             if ((player.track[row].actual_pos_absolute > trackLength) || (player.breakPattern))
             {
                 player.track[row].actual_pos_absolute = 0;
@@ -1792,10 +1810,11 @@ void Sequencer::switchRowStep(uint8_t row) // przełączamy stepy w zależności
                 {
                     player.endOfPattern = true;
                 }
+                patternWrappedBack = true;
             }
 
             player.track[row].actual_pos--;
-            if ((player.track[row].actual_pos < 0))
+            if ((player.track[row].actual_pos < 0) || (patternWrappedBack && ownLast < trackLength))
             {
                 reset_actual_pos(row);
                 player.track[row].passCount++;
@@ -1807,13 +1826,14 @@ void Sequencer::switchRowStep(uint8_t row) // przełączamy stepy w zależności
                     player.track[row].performanceSourcePattern = -1;
                 }
 
-                if ((player.onPatternOrSelectionEnd != NULL) && (row == kAllTracks - 1))
+                if ((player.onPatternOrSelectionEnd != NULL) && (row == kAllTracks - 1) &&
+                    (ownLast >= trackLength || patternWrappedBack))
                     player.onPatternOrSelectionEnd();
             }
             break;
 
         case PLAYMODE_RANDOM:
-            player.track[row].actual_pos = utilMathRandom::random(0, trackLength + 1);
+            player.track[row].actual_pos = utilMathRandom::random(0, ownLast + 1);
 
             player.track[row].actual_pos_absolute++;
             if ((player.track[row].actual_pos_absolute > trackLength) || (player.breakPattern))
@@ -1865,7 +1885,7 @@ void Sequencer::switchRowStep(uint8_t row) // przełączamy stepy w zależności
                 {
                     player.track[row].actual_pos =
                       playOrderWithFx[customPlayMode][nextStepInOrder].stepNumberToPlay - 1;
-                    player.track[row].actual_pos = player.track[row].actual_pos % (trackLength + 1);
+                    player.track[row].actual_pos = player.track[row].actual_pos % (ownLast + 1);
                 }
                 else
                 {
@@ -2152,7 +2172,10 @@ AUDIO_CORE_RAM void Sequencer::reset_actual_pos(uint8_t row, uint8_t delta /* = 
 
     else if (player.track[row].performancePlayMode == PLAYMODE_BACKWARD)
     {
-        player.track[row].actual_pos = currentPattern->track[row].length - delta;
+        uint8_t last = (player.performanceMode && isPerformanceTrack(row))
+                         ? currentPattern->track[row].length
+                         : getTrackLoopLast(currentPattern, row);
+        player.track[row].actual_pos = last - delta;
     }
 
     else if (player.track[row].performancePlayMode == PLAYMODE_PINGPONG)
@@ -3094,6 +3117,81 @@ void Sequencer::updateTrackLengths(strPattern* pattern)
     for (int trackIdx = 0; trackIdx < kAllTracks; trackIdx++)
     {
         pattern->track[trackIdx].length = pattern->track[0].length;
+    }
+    // all tracks full length again
+    pattern->rezerwa1 = 0;
+    pattern->rezerwa2 = 0;
+}
+
+AUDIO_CORE_RAM uint8_t Sequencer::getTrackLoopLast(const strPattern* p, uint8_t track)
+{
+    uint8_t patternLast = p->track[0].length;
+    if (!hasTrackLoops(p))
+        return patternLast;
+
+    if (track == 0)
+    {
+        uint8_t r = p->rezerwa1;
+        return (r == 0 || r - 1 >= patternLast) ? patternLast : r - 1;
+    }
+
+    uint8_t last = p->track[track].length;
+    return last > patternLast ? patternLast : last;
+}
+
+void Sequencer::setTrackLoopLast(strPattern* p, uint8_t track, uint8_t last)
+{
+    uint8_t patternLast = p->track[0].length;
+    if (last > patternLast)
+        last = patternLast;
+
+    if (!hasTrackLoops(p))
+    {
+        for (int t = 1; t < kAllTracks; t++)
+            p->track[t].length = patternLast;
+        p->rezerwa1 = 0;
+        p->rezerwa2 = kTrackLoopMagic;
+    }
+
+    if (track == 0)
+        p->rezerwa1 = (last >= patternLast) ? 0 : last + 1;
+    else
+        p->track[track].length = last;
+}
+
+void Sequencer::captureTrackLoops(const strPattern* p, uint8_t out[])
+{
+    for (int t = 0; t < kAllTracks; t++)
+        out[t] = getTrackLoopLast(p, t);
+}
+
+void Sequencer::restoreTrackLoops(strPattern* p, const uint8_t oldLast[], uint8_t oldPatternLast,
+                                  uint8_t mode)
+{
+    if (!hasTrackLoops(p))
+        return;
+
+    uint8_t newPatternLast = p->track[0].length;
+
+    for (int t = 0; t < kAllTracks; t++)
+    {
+        int last = newPatternLast;
+        if (oldLast[t] < oldPatternLast) // this track had its own, shorter loop
+        {
+            if (mode == 1)
+                last = (oldLast[t] + 1) * 2 - 1;
+            else if (mode == 2)
+                last = oldLast[t] / 2;
+            else
+                last = oldLast[t];
+            if (last > newPatternLast)
+                last = newPatternLast;
+        }
+
+        if (t == 0)
+            p->rezerwa1 = (last >= newPatternLast) ? 0 : last + 1;
+        else
+            p->track[t].length = last;
     }
 }
 

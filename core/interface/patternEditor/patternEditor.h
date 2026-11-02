@@ -261,6 +261,9 @@ class cPatternEditor : public ModuleBase
     strFrameData frameData;
 
     int8_t selectedPlace = -1; // przytrzymany przycisk pod ekranem
+    static constexpr int8_t kTrackLengthPlace = 10; // "Track Length" held (page 3, button 3)
+    void changeTrackLength(int16_t value);
+    void showTrackLengthLabel(bool held);
     bool undoRedoOpen = 0;     // true jesli operujemy jogiem na undoRedo
 
     // parametry

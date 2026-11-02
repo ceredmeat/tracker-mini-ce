@@ -553,6 +553,9 @@ bool Sequencer::duplicatePattern()
 
     int newPatternLength = ((oldPatternMaxStep + 1) * 2) - 1;
 
+    uint8_t oldLoops[kAllTracks];
+    captureTrackLoops(currentPattern, oldLoops);
+
     for (int trackIdx = 0; trackIdx < kAllTracks; trackIdx++)
     {
         int trackLen = oldPatternMaxStep + 1;
@@ -565,6 +568,8 @@ bool Sequencer::duplicatePattern()
         }
     }
 
+    restoreTrackLoops(currentPattern, oldLoops, oldPatternMaxStep, 0);
+
     return true;
 }
 
@@ -576,6 +581,10 @@ bool Sequencer::expandPattern()
 
     if (patternLength > (Sequencer::MAXSTEP / 2))
         return false;
+
+    uint8_t oldPatternLast = patternLength;
+    uint8_t oldLoops[kAllTracks];
+    captureTrackLoops(currentPattern, oldLoops);
 
     patternLength = ((patternLength + 1) * 2) - 1;
 
@@ -595,6 +604,8 @@ bool Sequencer::expandPattern()
         }
     }
 
+    restoreTrackLoops(currentPattern, oldLoops, oldPatternLast, 1);
+
     return true;
 }
 
@@ -606,6 +617,9 @@ bool Sequencer::shrinkPattern()
         return false;
 
     int newPatternMaxStep = patternMaxStep / 2;
+
+    uint8_t oldLoops[kAllTracks];
+    captureTrackLoops(currentPattern, oldLoops);
 
     for (int trackIdx = 0; trackIdx < kAllTracks; trackIdx++)
     {
@@ -625,6 +639,8 @@ bool Sequencer::shrinkPattern()
 
         currentPattern->track[trackIdx].length = newPatternMaxStep;
     }
+
+    restoreTrackLoops(currentPattern, oldLoops, patternMaxStep, 2);
 
     return true;
 }

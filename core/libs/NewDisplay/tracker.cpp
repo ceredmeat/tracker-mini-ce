@@ -1030,7 +1030,7 @@ void cTracker::notes()
                 actualColor = colors[14];
             else
             {
-                if (tracks->inactive[tracks->firstVisibleTrack + i])
+                if (tracks->inactive[tracks->firstVisibleTrack + i] || ((tracks->pastEnd[tracks->firstVisibleTrack + i] >> j) & 1))
                     actualColor = colors[12];
                 else if (*text == '-')
                     actualColor = colors[6];
@@ -1085,7 +1085,7 @@ void cTracker::instruments()
                 actualColor = colors[14];
             else
             {
-                if (tracks->inactive[track])
+                if (tracks->inactive[track] || ((tracks->pastEnd[track] >> j) & 1))
                     actualColor = colors[12];
                 else if (*text == '-')
                     actualColor = colors[7];
@@ -1151,7 +1151,7 @@ void cTracker::fxes1()
                 actualColor = colors[14];
             else
             {
-                if (tracks->inactive[tracks->firstVisibleTrack + i])
+                if (tracks->inactive[tracks->firstVisibleTrack + i] || ((tracks->pastEnd[tracks->firstVisibleTrack + i] >> j) & 1))
                     actualColor = colors[12];
                 else if (*text == '-')
                     actualColor = colors[8];
@@ -1202,7 +1202,7 @@ void cTracker::fxes2()
                 actualColor = colors[14];
             else
             {
-                if (tracks->inactive[tracks->firstVisibleTrack + i])
+                if (tracks->inactive[tracks->firstVisibleTrack + i] || ((tracks->pastEnd[tracks->firstVisibleTrack + i] >> j) & 1))
                     actualColor = colors[12];
                 else if (*text == '-')
                     actualColor = colors[9];

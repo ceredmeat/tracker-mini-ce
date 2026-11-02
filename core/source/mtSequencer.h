@@ -899,6 +899,19 @@ class Sequencer
     void handleNoteOff(byte channel, byte pitch, byte volume, int16_t source);
     void updateTrackLengths(strPattern* pattern);
 
+    // Per-track loop lengths (tracker-mini-ce "Track Length").
+    // A pattern uses them only when rezerwa2 == kTrackLoopMagic. Then track[t].length (t >= 1)
+    // is track t's last step and rezerwa1 holds track 0's (0 = full, else last step + 1);
+    // track[0].length stays the pattern length. Unmarked patterns play exactly as before.
+    static constexpr uint8_t kTrackLoopMagic = 0xA5;
+    static bool hasTrackLoops(const strPattern* p) { return p->rezerwa2 == kTrackLoopMagic; }
+    uint8_t getTrackLoopLast(const strPattern* p, uint8_t track);
+    void setTrackLoopLast(strPattern* p, uint8_t track, uint8_t last);
+    void captureTrackLoops(const strPattern* p, uint8_t out[]);
+    // mode: 0 keep, 1 double (expand), 2 halve (shrink)
+    void restoreTrackLoops(strPattern* p, const uint8_t oldLast[], uint8_t oldPatternLast,
+                           uint8_t mode);
+
     uint8_t noMoreRecOpen();
 
     int16_t getFxMax(uint8_t fxID, bool forRandom = false);

@@ -53,6 +53,7 @@ struct strTrackerPattern
     uint8_t popupMode; // 1 = obcina fill; 2 waski step popup; 4 szeroki step popup
 
     uint8_t inactive[kTrackCount];
+    uint16_t pastEnd[kTrackCount]; // bit r: row r is past this track's own loop (Track Length)
 
     bool showTrackNames;
     const char* tracksNames[kTrackCount];
@@ -75,6 +76,7 @@ struct strTrackerPattern
                 }
             }
             inactive[t] = 0;
+            pastEnd[t] = 0;
             tracksNames[t] = nullptr;
         }
         actualTrack = 0;

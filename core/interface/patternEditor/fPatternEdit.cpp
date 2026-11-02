@@ -48,6 +48,7 @@ static void functPastePattern();
 
 static void functNamePattern();
 static void functNameTrack();
+static void functTrackLength(uint8_t state);
 
 static void functClockWarningPopupButtons(uint8_t button, uint8_t state);
 
@@ -621,6 +622,9 @@ void cPatternEditor::refreshPattern()
                                               ? mtProject.values.trackMute[trackIdx]
                                               : mtProject.values.midiTrackMute[trackIdx % 8];
 
+        uint8_t trackLoopLast = sequencer.getTrackLoopLast(seq, trackIdx);
+        trackerPattern.pastEnd[trackIdx] = 0;
+
         for (uint8_t rowIdx = 0; rowIdx < 15; rowIdx++)
         {
             strTrackerPattern::strTracks::strRow& row = trackerPattern.track[trackIdx].row[rowIdx];
@@ -675,6 +679,11 @@ void cPatternEditor::refreshPattern()
                 row.fx[1][3] = 0;
                 row.fx[1][4] = 0;
                 continue;
+            }
+
+            if (seqStepIdx > trackLoopLast)
+            {
+                trackerPattern.pastEnd[trackIdx] |= (1 << rowIdx);
             }
 
             bool showInstrument = false;
@@ -1271,6 +1280,9 @@ const uint8_t changeStepVals[changeLengthVals_elements] = { 0, 1, 2, 4, 8, 16, 3
 void cPatternEditor::changeActualPatternLength(int16_t value)
 {
     Sequencer::strPattern* pattern = sequencer.getPatternToUI();
+    uint8_t oldPatternLast = pattern->track[0].length;
+    uint8_t oldLoops[kAllTracks];
+    sequencer.captureTrackLoops(pattern, oldLoops);
 
     if (pattern->track[0].length + value < 0)
         pattern->track[0].length = 0;
@@ -1281,6 +1293,7 @@ void cPatternEditor::changeActualPatternLength(int16_t value)
 
     for (uint8_t i = 1; i < 8; i++)
         pattern->track[i].length = pattern->track[0].length;
+    sequencer.restoreTrackLoops(pattern, oldLoops, oldPatternLast, 0);
 
     trackerPattern.patternLength = pattern->track[0].length + 1;
 
@@ -1296,6 +1309,9 @@ void cPatternEditor::changeActualPatternLength(int16_t value)
 void cPatternEditor::changeActualPatternLengthByDefinedValues(int16_t dir)
 {
     Sequencer::strPattern* pattern = sequencer.getPatternToUI();
+    uint8_t oldPatternLast = pattern->track[0].length;
+    uint8_t oldLoops[kAllTracks];
+    sequencer.captureTrackLoops(pattern, oldLoops);
 
     if (dir > 0)
     {
@@ -1322,6 +1338,7 @@ void cPatternEditor::changeActualPatternLengthByDefinedValues(int16_t dir)
 
     for (uint8_t i = 1; i < 8; i++)
         pattern->track[i].length = pattern->track[0].length;
+    sequencer.restoreTrackLoops(pattern, oldLoops, oldPatternLast, 0);
 
     trackerPattern.patternLength = pattern->track[0].length + 1;
 
@@ -1338,11 +1355,15 @@ void cPatternEditor::changeActualPatternLengthByDefinedValues(int16_t dir)
 void cPatternEditor::setActualPatternLength(int16_t value)
 {
     Sequencer::strPattern* pattern = sequencer.getPatternToUI();
+    uint8_t oldPatternLast = pattern->track[0].length;
+    uint8_t oldLoops[kAllTracks];
+    sequencer.captureTrackLoops(pattern, oldLoops);
 
     pattern->track[0].length = clamp<int>(value, 0, Sequencer::MAXSTEP);
 
     for (uint8_t i = 1; i < 8; i++)
         pattern->track[i].length = pattern->track[0].length;
+    sequencer.restoreTrackLoops(pattern, oldLoops, oldPatternLast, 0);
 
     trackerPattern.patternLength = pattern->track[0].length + 1;
 
@@ -2005,6 +2026,7 @@ void functEncoder(int16_t value)
             case 0: PTE->changeActualPattern(value); break;
             case 1: PTE->changeActualPatternLength(value); break;
             case 2: PTE->changeActualPatternEditStep(value); break;
+            case cPatternEditor::kTrackLengthPlace: PTE->changeTrackLength(value); break;
             case 5:
             case 6: functUndoRedoOnLeftRight(value); break;
         }
@@ -3383,6 +3405,48 @@ static void functChangePatternEditStep(uint8_t state)
             PTE->focusOnPattern();
         }
     }
+}
+
+// ##############################################################################################
+// ###############################         TRACK LENGTH         #################################
+// ##############################################################################################
+// Hold "Track Length" (More, More, button 3) and press + / - to set the cursor track's own loop.
+
+static void functTrackLength(uint8_t state)
+{
+    if (state == buttonPress)
+    {
+        PTE->selectedPlace = cPatternEditor::kTrackLengthPlace;
+        PTE->unfocusPattern();
+        display.setControlValue(PTE->frameControl, 2);
+        display.setControlShow(PTE->frameControl);
+        display.refreshControl(PTE->frameControl);
+        PTE->showTrackLengthLabel(true);
+        display.synchronizeRefresh();
+    }
+    else if (state == buttonRelease)
+    {
+        if (PTE->selectedPlace == cPatternEditor::kTrackLengthPlace)
+        {
+            PTE->focusOnPattern();
+            PTE->showTrackLengthLabel(false);
+            display.synchronizeRefresh();
+        }
+    }
+}
+
+void cPatternEditor::changeTrackLength(int16_t value)
+{
+    Sequencer::strPattern* pattern = sequencer.getPatternToUI();
+    uint8_t track = trackerPattern.actualTrack;
+
+    int last = sequencer.getTrackLoopLast(pattern, track) + value;
+    last = clamp<int>(last, 0, pattern->track[0].length);
+    sequencer.setTrackLoopLast(pattern, track, last);
+
+    showTrackLengthLabel(true);
+    refreshPattern();
+    newFileManager.setActualPatternStructChanged();
 }
 
 // ##############################################################################################
@@ -5157,6 +5221,7 @@ void cPatternEditor::setActionButtonPage3Funct()
 
     ip->setButtonObj(interfaceButton0, buttonPress, functNamePattern);
     ip->setButtonObj(interfaceButton1, buttonPress, functNameTrack);
+    ip->setButtonObj(interfaceButton2, functTrackLength);
 
     ip->setButtonObj(interfaceButton7, buttonPress, functNextActionButtonPage);
 }
