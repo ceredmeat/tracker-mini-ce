@@ -289,6 +289,8 @@ class cFileManager
     bool loadPerformanceTrackToBuffer(uint8_t pattIndex, uint8_t trackIndex);
     bool isPatternLoading();
     bool isPatternEmpty(uint8_t index);
+    // Copy to New (tracker-mini-ce): write a pattern into an empty workspace slot
+    bool writeWorkspacePatternCopy(uint8_t index, Sequencer::strPattern* sourcePattern);
 
     uint8_t getNextSongPattern();
     uint8_t getSongPattern(uint8_t pos);

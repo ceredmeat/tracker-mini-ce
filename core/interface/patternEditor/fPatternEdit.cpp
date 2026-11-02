@@ -48,6 +48,7 @@ static void functPastePattern();
 
 static void functNamePattern();
 static void functNameTrack();
+static void functCopyToNew();
 
 static void functClockWarningPopupButtons(uint8_t button, uint8_t state);
 
@@ -3949,6 +3950,51 @@ static void functInvert()
 }
 
 // ##############################################################################################
+// ###############################         Copy to New          #################################
+// ##############################################################################################
+// Copies the current pattern into the next empty pattern and switches to it.
+static void functCopyToNew()
+{
+    if (!sequencer.isStop())
+    {
+        mtPopups.show(0, "Stop playback to copy the pattern.");
+        return;
+    }
+
+    uint8_t current = mtProject.values.actualPattern;
+    int target = -1;
+    for (int idx = current + 1; idx <= PATTERN_INDEX_MAX; idx++)
+    {
+        if (newFileManager.isPatternEmpty(idx))
+        {
+            target = idx;
+            break;
+        }
+    }
+
+    if (target < 0)
+    {
+        mtPopups.show(0, "No empty pattern after this one.");
+        return;
+    }
+
+    newFileManager.saveWorkspacePatternNow(current);
+
+    if (!newFileManager.writeWorkspacePatternCopy(target, sequencer.getPatternToUI()))
+    {
+        mtPopups.show(0, "Copy failed.");
+        return;
+    }
+
+    PTE->setActualPattern(target);
+    PTE->showPattern();
+
+    static char copiedText[40];
+    snprintf(copiedText, sizeof(copiedText), "Copied to pattern %d", target);
+    mtPopups.show(0, copiedText);
+}
+
+// ##############################################################################################
 // ###############################       Duplicate pattern      #################################
 // ##############################################################################################
 static void functDuplicatePattern()
@@ -5157,6 +5203,8 @@ void cPatternEditor::setActionButtonPage3Funct()
 
     ip->setButtonObj(interfaceButton0, buttonPress, functNamePattern);
     ip->setButtonObj(interfaceButton1, buttonPress, functNameTrack);
+    if (editMode)
+        ip->setButtonObj(interfaceButton4, buttonPress, functCopyToNew);
 
     ip->setButtonObj(interfaceButton7, buttonPress, functNextActionButtonPage);
 }
