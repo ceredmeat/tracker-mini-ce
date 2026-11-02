@@ -1573,7 +1573,7 @@ void cPatternEditor::showActionButtonPage3Labels()
     display.setControlText(label[1], "Track");
     display.setControlText(label[2], "Track");
     display.setControlText(label[3], "Humanize");
-    display.setControlText(label[4], "");
+    display.setControlText(label[4], "Copy to");
     display.setControlText(label[5], "");
     display.setControlText(label[6], "");
     display.setControlText(label[7], "More");
@@ -1582,13 +1582,17 @@ void cPatternEditor::showActionButtonPage3Labels()
     display.setControlText2(label[1], "Name");
     display.setControlText2(label[2], "Length");
     display.setControlText2(label[3], "Selection");
-    display.setControlText2(label[4], "");
+    display.setControlText2(label[4], "New");
     display.setControlText2(label[5], "");
     display.setControlText2(label[6], "");
     display.setControlText2(label[7], "");
 
     display.setControlData(label[3], &labelDataRed);
     display.setControlColors(label[3],
+                             editMode ? display.getTheme().activeButtonLabelsColors
+                                      : display.getTheme().inactiveButtonLabelsColors);
+    display.setControlData(label[4], &labelDataRed);
+    display.setControlColors(label[4],
                              editMode ? display.getTheme().activeButtonLabelsColors
                                       : display.getTheme().inactiveButtonLabelsColors);
 

@@ -215,6 +215,21 @@ bool cFileManager::isPatternEmpty(uint8_t index)
     return false;
 }
 
+bool cFileManager::writeWorkspacePatternCopy(uint8_t index, Sequencer::strPattern* sourcePattern)
+{
+    char patternToSave[PATCH_SIZE]{ 0 };
+    snprintf(patternToSave, PATCH_SIZE, cWorkspacePatternFileFormat, index);
+
+    bool status = writePatternFile(patternToSave, sourcePattern);
+    if (status)
+    {
+        updatePatternBitmask(index, sourcePattern);
+        mtProject.values.projectNotSavedFlag |= 1;
+        changesFlags.project = 1;
+    }
+    return status;
+}
+
 bool cFileManager::saveWorkspacePatternNow(uint8_t index)
 {
     char patternToSave[PATCH_SIZE]{ 0 };
