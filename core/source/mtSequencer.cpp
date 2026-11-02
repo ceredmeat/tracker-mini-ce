@@ -1,3 +1,4 @@
+#include <cstring>
 #include <algorithm>
 #include "ceMods.h"
 #include <numeric>
@@ -246,8 +247,13 @@ AUDIO_CORE_RAM void Sequencer::tick_uStep(void)
             for (int trackIdx = 0; trackIdx < kAllTracks; trackIdx++)
             {
                 play_microStep(trackIdx);
+                if (player.track[trackIdx].uStep == 1)
+                {
+                    interpolateStartStep(trackIdx);
+                }
                 inc_uStep(trackIdx);
             }
+            interpolateTick();
         }
     }
 }
@@ -1347,6 +1353,7 @@ AUDIO_CORE_RAM void Sequencer::play(uint8_t fromPos)
     reset_actual_pos();
     resetChanceState();
     applyGlobalSwing(true);
+    interpolateReset();
 
     player.isStop = 0;
     player.isPlay = 1;
@@ -1391,6 +1398,7 @@ void Sequencer::playSelection(bool looped) // potrzebuje aktualnego zaznaczenia
     reset_actual_pos();
     resetChanceState();
     applyGlobalSwing(true);
+    interpolateReset();
     for (uint8_t trackIdx = 0; trackIdx < kAllTracks; trackIdx++)
     {
         player.track[trackIdx].uStep = 1;
@@ -1620,6 +1628,7 @@ void Sequencer::stop(void)
 
     reset_actual_pos();
     resetChanceState();
+    interpolateReset();
 
     player.tempoFx.reset();
 
@@ -1686,6 +1695,7 @@ void Sequencer::recStart(void)
         engine.endAllFx();
         reset_actual_pos();
         resetChanceState();
+        interpolateReset();
         player.preRecMetronomeActive = 1;
         showPreRollPopup();
     }
@@ -2233,6 +2243,217 @@ AUDIO_CORE_RAM void Sequencer::applyGlobalSwing(bool resetToggle)
     player.swing.setSwing(value);
     if (resetToggle)
         player.swing.stepToogle = 0;
+}
+
+AUDIO_CORE_RAM void Sequencer::interpolateReset(void)
+{
+    memset(ccRamp, 0, sizeof(ccRamp));
+    ccRampNext = 0;
+}
+
+static int8_t findCcSlot(const Sequencer::strPattern::strTrack::strStep& step, uint8_t fxType)
+{
+    for (int slot = 0; slot < Sequencer::kStepFxSlots; slot++)
+    {
+        if (step.fx[slot].type == fxType)
+        {
+            return slot;
+        }
+    }
+    return -1;
+}
+
+// At the start of a step: a CC FX on it starts a ramp to the next step with the same letter
+AUDIO_CORE_RAM void Sequencer::interpolateStartStep(uint8_t row)
+{
+    if (!ceMods::interpolateMidi() && !ceMods::interpolateSynth())
+    {
+        return;
+    }
+    if (player.performanceMode)
+    {
+        return;
+    }
+
+    strPattern::strTrack& track = currentPattern->track[row];
+    uint8_t pos = player.track[row].actual_pos;
+
+    int first = 0;
+    int last = getTrackLoopLast(currentPattern, row); // the track's own length (tracklen)
+    if (player.selectionModeLooped)
+    {
+        first = player.loopSelection.firstStep;
+        last = std::min<int>(player.loopSelection.lastStep, last);
+    }
+    if (pos < first || pos > last)
+    {
+        return;
+    }
+    // Pattern loop or looped preview: wrap around. Song or queued pattern: hold at the end.
+    bool wrap = player.selectionModeLooped ||
+                (!player.songMode && !player.selectionMode && !player.breakPattern);
+    int count = last - first + 1;
+
+    for (int letter = 0; letter < 6; letter++)
+    {
+        uint8_t fxType = fx.FX_TYPE_SEND_CC_A + letter;
+        int8_t slot = findCcSlot(track.step[pos], fxType);
+        if (slot < 0)
+        {
+            continue;
+        }
+
+        strCcRamp& ramp = ccRamp[row][letter];
+        ramp.active = false;
+
+        uint8_t instrument = track.step[pos].instrument;
+        if (isMidiInstrument(instrument))
+        {
+            if (!ceMods::interpolateMidi())
+            {
+                continue;
+            }
+            uint8_t channel = instrumentIdxToMidiChannel(instrument);
+            if (channel == kNoChannel ||
+                mtProject.values.midiInstrument[channel - 1].ccOut[letter] >= 128)
+            {
+                continue;
+            }
+        }
+        else if (isSynthInstrument(instrument))
+        {
+            if (!ceMods::interpolateSynth())
+            {
+                continue;
+            }
+        }
+        else
+        {
+            continue;
+        }
+
+        for (int d = 1; d < count; d++)
+        {
+            int p = pos + d;
+            if (p > last)
+            {
+                if (!wrap)
+                {
+                    break;
+                }
+                p -= count;
+            }
+            int8_t nextSlot = findCcSlot(track.step[p], fxType);
+            if (nextSlot < 0)
+            {
+                continue;
+            }
+            if (track.step[p].instrument == instrument)
+            {
+                ramp.active = true;
+                ramp.from = track.step[pos].fx[slot].value;
+                ramp.to = track.step[p].fx[nextSlot].value;
+                ramp.slot = slot;
+                ramp.instrument = instrument;
+                ramp.pattern = mtProject.values.actualPattern;
+                ramp.length = d * 48;
+                ramp.elapsed = 0;
+                ramp.lastSent = ramp.from; // the step itself sends this value
+            }
+            break;
+        }
+    }
+}
+
+// Every micro-step: move the ramps on and send the values that changed
+AUDIO_CORE_RAM void Sequencer::interpolateTick(void)
+{
+    if (!ceMods::interpolateMidi() && !ceMods::interpolateSynth())
+    {
+        return;
+    }
+
+    // At most one ramp CC per micro-step goes out over MIDI, shared fairly, so notes and
+    // clock always get through.
+    int midiBudget = 1;
+    const int rampCount = kAllTracks * 6;
+
+    for (int i = 0; i < rampCount; i++)
+    {
+        int idx = (ccRampNext + i) % rampCount;
+        int row = idx / 6;
+        int letter = idx % 6;
+        strCcRamp& ramp = ccRamp[row][letter];
+        if (!ramp.active)
+        {
+            continue;
+        }
+        if (ramp.pattern != mtProject.values.actualPattern || player.performanceMode)
+        {
+            ramp.active = false;
+            continue;
+        }
+        if (ramp.elapsed < ramp.length)
+        {
+            ramp.elapsed++;
+        }
+        if (ramp.elapsed >= ramp.length)
+        {
+            ramp.active = false; // the next CC step sends the end value itself
+            continue;
+        }
+        if (isTrackEngineMuted(row))
+        {
+            continue;
+        }
+
+        int num = ((int)ramp.to - (int)ramp.from) * ramp.elapsed;
+        int half = ramp.length / 2;
+        int value = ramp.from + (num >= 0 ? (num + half) / (int)ramp.length
+                                          : -((-num + half) / (int)ramp.length));
+        if (value == ramp.lastSent)
+        {
+            continue;
+        }
+
+        uint8_t fxType = fx.FX_TYPE_SEND_CC_A + letter;
+        if (isMidiInstrument(ramp.instrument))
+        {
+            if (midiBudget <= 0)
+            {
+                continue;
+            }
+            uint8_t channel = instrumentIdxToMidiChannel(ramp.instrument);
+            if (channel == kNoChannel)
+            {
+                continue;
+            }
+            uint8_t cc = mtProject.values.midiInstrument[channel - 1].ccOut[letter];
+            if (cc >= 128)
+            {
+                continue;
+            }
+            sendCC(cc, value, channel, false);
+            midiBudget--;
+            ccRampNext = (idx + 1) % rampCount;
+        }
+#ifdef FEATURE_SYNTH
+        else if (isSynthInstrument(ramp.instrument))
+        {
+            int synthIdx = instrumentIdxToMidiChannel(ramp.instrument) - 1;
+            if (isOutOfRange(synthIdx, 0, kSynthParts - 1))
+            {
+                continue;
+            }
+            engine.seqSynthFx(fxType, value, ramp.slot, synthIdx);
+        }
+#endif
+        else
+        {
+            continue;
+        }
+        ramp.lastSent = value;
+    }
 }
 
 AUDIO_CORE_RAM void Sequencer::resetChanceState(void)

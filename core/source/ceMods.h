@@ -24,6 +24,10 @@ inline int swingValue() { return swingSetting() == 0 ? 0 : 24 + swingSetting(); 
 // Humanize: largest random timing (micro-move) and volume change, 0..50
 inline uint8_t& humanizeTiming() { return settings()[1]; }
 inline uint8_t& humanizeVolume() { return settings()[2]; }
+
+// Interpolate: CC FX ramps between steps. 0 = Off, 1 = On
+inline uint8_t& interpolateMidi() { return settings()[3]; }
+inline uint8_t& interpolateSynth() { return settings()[4]; }
 } // namespace ceMods
 
 #endif
