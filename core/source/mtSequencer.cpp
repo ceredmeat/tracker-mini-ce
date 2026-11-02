@@ -1364,6 +1364,7 @@ void Sequencer::playSelection(bool looped) // potrzebuje aktualnego zaznaczenia
 
     reset_actual_pos();
     resetChanceState();
+    applyGlobalSwing(true);
     for (uint8_t trackIdx = 0; trackIdx < kAllTracks; trackIdx++)
     {
         player.track[trackIdx].uStep = 1;
@@ -1881,7 +1882,10 @@ void Sequencer::switchRowStep(uint8_t row) // przełączamy stepy w zależności
 
     if (player.endOfPattern)
     {
-        applyGlobalSwing(false);
+        // every pattern start begins again on the long step of the pair (not in Performance
+        // mode, where tracks may play backwards or at random)
+        if (!player.performanceMode)
+            applyGlobalSwing(true);
 
         bool isNextPatternAvailable = 0; // jeśli 0 to song sie skonczyl
         bool patternSwitched = false;
