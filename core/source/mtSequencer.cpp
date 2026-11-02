@@ -954,9 +954,24 @@ AUDIO_CORE_FLASH void Sequencer::play_microStep(int row)
         playerRow.noteLength = gateLength; // ustawiany z fxa, -1 to nieskonczonosc
         playerRow.noteTimer = 0;           // od tej pory timer liczy w górę
 
+        // Legato (tracker-mini-ce): a Glide FX on a MIDI or synth note following another
+        // MIDI or synth note sends the new note-on before the old note-off, so a mono synth
+        // slides without restarting its envelope.
+        bool legatoStep = false;
+        strPlayer::strPlayerTrack::strSendStep legatoOldStep;
+
         if (player.track[row].noteOpen && !player.track[row].recOpen && stepToSend.note >= 0)
         {
-            stopOpenNoteOnTrack(row);
+            if (isLegatoStep(row, &stepToSend))
+            {
+                legatoStep = true;
+                legatoOldStep = playerRow.stepSent;
+                playerRow.noteOpen = 0;
+            }
+            else
+            {
+                stopOpenNoteOnTrack(row);
+            }
         }
 
         // jeśli rolka to nuty są krótsze od stepa
@@ -990,6 +1005,17 @@ AUDIO_CORE_FLASH void Sequencer::play_microStep(int row)
             }
 
             sendNoteOn(row, &stepToSend);
+
+            if (legatoStep)
+            {
+                bool sameChannel = instrumentIdxToMidiChannel(legatoOldStep.instrument) ==
+                                     instrumentIdxToMidiChannel(stepToSend.instrument) &&
+                                   isSynthInstrument(legatoOldStep.instrument) ==
+                                     isSynthInstrument(stepToSend.instrument);
+                // the same note on the same channel keeps sounding: no note-off for it
+                if (!(sameChannel && legatoOldStep.note == stepToSend.note))
+                    sendNoteOff(row, &legatoOldStep);
+            }
 
             playerRow.stepOpen = 1;
             playerRow.noteOpen = 1;
@@ -2467,6 +2493,33 @@ AUDIO_CORE_RAM void Sequencer::sendNoteOn(uint8_t track,
                                        step->fx[1].type,
                                        step->fx[1].value);
     }
+}
+
+AUDIO_CORE_RAM bool Sequencer::isLegatoStep(uint8_t row,
+                                             const strPlayer::strPlayerTrack::strSendStep* next)
+{
+    const strPlayer::strPlayerTrack::strSendStep& prev = player.track[row].stepSent;
+
+    if (prev.note < 0 || player.track[row].roll.isOn || player.track[row].arp.isOn)
+        return false;
+
+    bool prevMidiOrSynth = isMidiInstrument(prev.instrument) || isSynthInstrument(prev.instrument);
+    bool nextMidiOrSynth = isMidiInstrument(next->instrument) || isSynthInstrument(next->instrument);
+    if (!prevMidiOrSynth || !nextMidiOrSynth)
+        return false;
+
+    bool glide = false;
+    for (int i = 0; i < kStepFxSlots; i++)
+    {
+        uint8_t t = next->fx[i].type;
+        if (t == fx.FX_TYPE_GLIDE)
+            glide = true;
+        if (t == fx.FX_TYPE_MIDI_CHORD || t == fx.FX_TYPE_ARP)
+            return false;
+        if (prev.fx[i].type == fx.FX_TYPE_MIDI_CHORD || prev.fx[i].type == fx.FX_TYPE_ARP)
+            return false;
+    }
+    return glide;
 }
 
 AUDIO_CORE_RAM void Sequencer::sendNoteOff(uint8_t track,
