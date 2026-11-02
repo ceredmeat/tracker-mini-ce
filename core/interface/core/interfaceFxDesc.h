@@ -64,7 +64,8 @@ const char* const fxDescriptions[FX_COUNT] = {
     "0-100: Probability %\n"
     "GL / !L: Group / Not Last\n"
     "1:1-6:6: Play N / Skip M\n"
-    "S11-S66: Skip N / Play M",
+    "S11-S66: Skip N / Play M\n"
+    "1st / !1s / 1/2-8/8: Loop A of B",
     // Sequencer::strFxConsts::enFxType::FX_TYPE_ROLL,
     "Destination: Sample, Synth, MIDI \n\nSets the type and value of the Roll (step divider) "
     "parameter."
@@ -370,7 +371,8 @@ const char* const fxDescriptions[FX_COUNT] = {
     "0-100: Probability %\n"
     "GL / !L: Group / Not Last\n"
     "1:1-6:6: Play N / Skip M\n"
-    "S11-S66: Skip N / Play M",
+    "S11-S66: Skip N / Play M\n"
+    "1st / !1s / 1/2-8/8: Loop A of B",
     // Sequencer::strFxConsts::enFxType::FX_TYPE_ROLL,
     "Destination: Sample, MIDI \n\nSets the type and value of the Roll (step divider) "
     "parameter."

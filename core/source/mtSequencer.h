@@ -266,7 +266,14 @@ class Sequencer
             CHANCE_PLAY_SKIP_END = CHANCE_PLAY_SKIP_START + CHANCE_CYCLE_COUNT - 1,
             CHANCE_SKIP_PLAY_START = CHANCE_PLAY_SKIP_END + 1,
             CHANCE_SKIP_PLAY_END = CHANCE_SKIP_PLAY_START + CHANCE_CYCLE_COUNT - 1,
-            CHANCE_MAX = CHANCE_SKIP_PLAY_END,
+            // Loop conditions (tracker-mini-ce): counted per track from playback / pattern start.
+            CHANCE_FIRST_LOOP = CHANCE_SKIP_PLAY_END + 1,       // 175 "1st": first loop only
+            CHANCE_NOT_FIRST_LOOP = CHANCE_FIRST_LOOP + 1,      // 176 "!1s": every loop but the first
+            CHANCE_LOOP_OF_START = CHANCE_NOT_FIRST_LOOP + 1,   // 177 "1/2": loop A of every B
+            CHANCE_LOOP_OF_MAX_B = 8,                           // B = 2..8, A = 1..B
+            CHANCE_LOOP_OF_COUNT = 35,                          // 2 + 3 + ... + 8
+            CHANCE_LOOP_OF_END = CHANCE_LOOP_OF_START + CHANCE_LOOP_OF_COUNT - 1, // 211
+            CHANCE_MAX = CHANCE_LOOP_OF_END,
         };
 
     } fx;
@@ -970,6 +977,23 @@ class Sequencer
     void reset_actual_pos(uint8_t row, uint8_t delta = 0);
     void resetChanceState(void);
     bool evaluateChanceFx(uint8_t row, uint8_t value);
+
+  public:
+    // Loop conditions: value CHANCE_LOOP_OF_START.. -> "loop a of every b" (b = 2..8, a = 1..b).
+    static void decodeChanceLoopOf(uint8_t value, uint8_t* a, uint8_t* b)
+    {
+        uint8_t idx = value - strFxConsts::CHANCE_LOOP_OF_START;
+        uint8_t bb = 2;
+        while (idx >= bb && bb < strFxConsts::CHANCE_LOOP_OF_MAX_B)
+        {
+            idx -= bb;
+            bb++;
+        }
+        *a = idx + 1;
+        *b = bb;
+    }
+
+  private:
 
     void play_microStep(int row);
     void inc_uStep(uint8_t row);

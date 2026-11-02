@@ -2016,6 +2016,21 @@ void Sequencer::makeFxValLabelWithAlgin(char* ptr,
                 uint8_t m = 1 + idx % fx.CHANCE_CYCLE_STEPS;
                 snprintf(ptr, len, "S%u%u", n, m);
             }
+            else if (valueFromFx == fx.CHANCE_FIRST_LOOP)
+            {
+                strncpy(ptr, "1st", len);
+            }
+            else if (valueFromFx == fx.CHANCE_NOT_FIRST_LOOP)
+            {
+                strncpy(ptr, "!1s", len);
+            }
+            else if (valueFromFx >= fx.CHANCE_LOOP_OF_START &&
+                     valueFromFx <= fx.CHANCE_LOOP_OF_END)
+            {
+                uint8_t a, b;
+                decodeChanceLoopOf(valueFromFx, &a, &b);
+                snprintf(ptr, len, "%u/%u", a, b);
+            }
             break;
         }
         case fx.FX_TYPE_MIDI_CHORD: strncpy(ptr, chordDefName[valAfterCorrection], len); break;
