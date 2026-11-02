@@ -236,9 +236,48 @@ void cSongEditor::lightUpPadBoard()
 
 //==============================================================================================================
 
+// Song Loop: a block of song positions selected in the grid (Shift + Up/Down)
+static bool songBlockSelected()
+{
+    return SE->selectedPlace == 0 && SE->songPlayerData.selection.isActive &&
+           SE->songPlayerData.selection.patternSelectionLength > 1;
+}
+
+static void setSongLoopFromSelection()
+{
+    uint8_t first = SE->songPlayerData.selection.startSongPosition;
+    uint8_t last = first + SE->songPlayerData.selection.patternSelectionLength - 1;
+    newFileManager.setSongLoop(first, last);
+}
+
 static void functPlayPattern()
 {
     Sequencer::enSeqState seqState = sequencer.getSeqState();
+
+    // Song Loop
+    if (seqState == Sequencer::SEQ_STATE_STOP && songBlockSelected())
+    {
+        setSongLoopFromSelection();
+        SE->selectedSongPosition = SE->songPlayerData.selection.startSongPosition;
+        playSongFromSelectedPattern();
+        SE->refreshButtonsLabels();
+        return;
+    }
+    if (seqState == Sequencer::SEQ_STATE_PLAY_SONG)
+    {
+        if (newFileManager.isSongLoopActive())
+        {
+            newFileManager.clearSongLoop(); // Continue Song
+            SE->refreshButtonsLabels();
+            return;
+        }
+        if (songBlockSelected())
+        {
+            setSongLoopFromSelection(); // loop the block from the next pattern end
+            SE->refreshButtonsLabels();
+            return;
+        }
+    }
 
     if (seqState == Sequencer::SEQ_STATE_STOP)
     {

@@ -2,6 +2,7 @@
 
 #include "Platform.h"
 #include "mtSequencer.h"
+#include "fileManager.h"
 #include "string.h"
 
 static const uint16_t framesPlaces[3][4] = {
@@ -237,6 +238,47 @@ void cSongEditor::refreshSongPlayerSelectedSlot()
 void cSongEditor::refreshButtonsLabels()
 {
     Sequencer::enSeqState seqState = sequencer.getSeqState();
+
+    // Song Loop labels
+    bool blockSelected = selectedPlace == 0 && songPlayerData.selection.isActive &&
+                         songPlayerData.selection.patternSelectionLength > 1;
+    uint8_t loopState = 0;
+    const char* loopText1 = "";
+    const char* loopText2 = "";
+    if (seqState == Sequencer::SEQ_STATE_STOP && blockSelected &&
+        !buttons->isButtonPressed(interfaceButtonShift))
+    {
+        loopState = 10;
+        loopText1 = "Play";
+        loopText2 = "Selection";
+    }
+    else if (seqState == Sequencer::SEQ_STATE_PLAY_SONG && newFileManager.isSongLoopActive())
+    {
+        loopState = 11;
+        loopText1 = "Continue";
+        loopText2 = "Song";
+    }
+    else if (seqState == Sequencer::SEQ_STATE_PLAY_SONG && blockSelected)
+    {
+        loopState = 12;
+        loopText1 = "Loop";
+        loopText2 = "Selection";
+    }
+    if (loopState)
+    {
+        if (playButtonsState != loopState)
+        {
+            display.setControlText(label[0], loopText1);
+            display.setControlText2(label[0], loopText2);
+            display.setControlText(label[1], seqState == Sequencer::SEQ_STATE_STOP ? "Play" : "Stop");
+            display.setControlText2(label[1], seqState == Sequencer::SEQ_STATE_STOP ? "Song" : "");
+            display.refreshControl(label[0]);
+            display.refreshControl(label[1]);
+            playButtonsState = loopState;
+        }
+        return;
+    }
+
     if (seqState == Sequencer::SEQ_STATE_STOP)
     {
         if (buttons->isButtonPressed(interfaceButtonShift) && selectedPlace <= 0 &&
