@@ -297,6 +297,26 @@ class cFileManager
     std::optional<int> getPatternPosInSong(uint8_t patternToSearch);
     void setSongPos(uint8_t pos);
     bool switchNextPatternInSong();
+
+    // Song Loop (tracker-mini-ce): repeat a block of song positions
+    void setSongLoop(uint8_t firstPos, uint8_t lastPos)
+    {
+        songLoopFirst = firstPos;
+        songLoopLast = lastPos;
+    }
+    void clearSongLoop() { songLoopFirst = songLoopLast = -1; }
+    bool isSongLoopActive() const { return songLoopFirst >= 0; }
+    int16_t getSongLoopFirst() const { return songLoopFirst; }
+    int16_t getSongLoopLast() const { return songLoopLast; }
+    uint8_t nextSongPosition(uint8_t pos) const
+    {
+        // at (or past) the block's end the song goes back to its start
+        if (songLoopFirst >= 0 && pos >= songLoopLast)
+            return songLoopFirst;
+        return pos + 1;
+    }
+    int16_t songLoopFirst = -1;
+    int16_t songLoopLast = -1;
     void copySongTracks(char* currentProjectPath,
                         uint8_t srcPatternIdx,
                         uint8_t destPatternIdx,

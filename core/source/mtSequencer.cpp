@@ -1571,6 +1571,8 @@ AUDIO_CORE_RAM void Sequencer::stopManualNotes(void)
 
 void Sequencer::stop(void)
 {
+    newFileManager.clearSongLoop(); // Song Loop ends with Stop, on any screen
+
     songTimer.stop();
     stopAllOpenNotes();
     cancelFxes();
