@@ -295,6 +295,12 @@ class cFileManager
     std::optional<int> getPatternPosInSong(uint8_t patternToSearch);
     void setSongPos(uint8_t pos);
     bool switchNextPatternInSong();
+
+    // Color Song (tracker-mini-ce): Song screen blocks coloured by their first instrument
+    void computeSongColors(uint8_t patternIdx, Sequencer::strPattern* pattern);
+    void invalidateSongColors();
+    void scanSongColors(); // fills in the song's patterns that aren't known yet (when stopped)
+    uint8_t getSongColor(uint8_t patternIdx, uint8_t track); // 0 = no colour (default white)
     void copySongTracks(char* currentProjectPath,
                         uint8_t srcPatternIdx,
                         uint8_t destPatternIdx,

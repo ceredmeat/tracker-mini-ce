@@ -744,7 +744,11 @@ void cSongPlayer::fillBlocks()
                 }
                 else
                 {
-                    API_COLOR(colors[1]);
+                    uint32_t blockColor =
+                      controlData->blockColor
+                        ? controlData->blockColor(controlData->songData[textListPos + pattern], track)
+                        : 0;
+                    API_COLOR(blockColor ? blockColor : colors[1]);
                 }
                 API_VERTEX2F((localX), (localY + 1));
                 API_VERTEX2F((localX + blockWidth - 1), (localY + BLOCK_HEIGHT - 1));

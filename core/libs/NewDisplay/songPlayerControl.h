@@ -70,6 +70,9 @@ typedef struct
     uint8_t normalTracksNamesBuffLen;
     uint8_t midiTracksNamesBuffLen;
 
+    // Color Song: colour of a block (0 = default)
+    uint32_t (*blockColor)(uint8_t patternIdx, uint8_t track);
+
 } player_data_t;
 
 //--------------------------------------------------------------------

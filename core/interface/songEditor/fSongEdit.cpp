@@ -138,6 +138,18 @@ void cSongEditor::update()
     refreshDeleting();
 }
 
+// Color Song palette: index 1-8 sample instruments, 9-11 MIDI, 12-15 synths
+static const uint32_t kSongColorPalette[16] = {
+    0x000000, 0xE8685A, 0xF0A04B, 0xE8D25A, 0x8FD45A, 0x4FC9A0, 0x4FB6E8, 0x7C8CF0, 0xD07CE8,
+    0x6FA8DC, 0x5C86B8, 0x9DC3E6, 0xB48CF0, 0xE07CC0, 0xC9A0FF, 0xF08CA8,
+};
+
+static uint32_t songBlockColor(uint8_t patternIdx, uint8_t track)
+{
+    uint8_t c = newFileManager.getSongColor(patternIdx, track);
+    return c ? kSongColorPalette[c] : 0;
+}
+
 void cSongEditor::start(uint32_t options)
 {
     moduleRefresh = 1;
@@ -148,6 +160,7 @@ void cSongEditor::start(uint32_t options)
     exitOnButtonRelease = 0;
 
     newFileManager.updateActualPatternBitmask();
+    newFileManager.scanSongColors();
     readSong();
     handleEntryIcon();
 
@@ -1015,6 +1028,7 @@ void cSongEditor::readSong()
     songPlayerData.midiTracksMute = mtProject.values.midiTrackMute;
     songPlayerData.isListActive = 1;
     songPlayerData.isEditMode = &editMode;
+    songPlayerData.blockColor = songBlockColor;
 
     display.setControlData(songPlayerControl, &songPlayerData);
 }

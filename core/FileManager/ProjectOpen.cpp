@@ -333,6 +333,7 @@ bool ProjectOpen::copySamples(int idx, uint8_t& copyState)
 void ProjectOpen::openProjectFinish()
 {
     clearInstrumentList();
+    newFileManager.invalidateSongColors(); // Color Song: a new project, new colours
 
     //------------ patterns metadata
     char srcFilePath[PATCH_SIZE];

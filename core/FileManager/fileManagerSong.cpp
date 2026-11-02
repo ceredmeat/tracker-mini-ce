@@ -192,9 +192,92 @@ void cFileManager::updateActualPatternBitmask()
     }
 }
 
+// Color Song: one 4-bit colour per track per pattern, 0 = none.
+__NOINIT(EXTERNAL_RAM) static uint8_t songColors[PATTERN_INDEX_MAX + 1][kAllTracks / 2];
+static uint8_t songColorsValid[(PATTERN_INDEX_MAX + 1 + 7) / 8]; // zeroed at boot
+
+static uint8_t instrumentColor(uint8_t instrument)
+{
+    if (isMidiInstrument(instrument))
+        return 9 + instrument % 3; // MIDI: blues
+    if (isSynthInstrument(instrument))
+        return 12 + instrument % 4; // synths: purples and pinks
+    return 1 + instrument % 8; // samples: eight hues
+}
+
+void cFileManager::computeSongColors(uint8_t patternIdx, Sequencer::strPattern* pattern)
+{
+    uint8_t length = pattern->track[0].length;
+    for (int t = 0; t < kAllTracks; t++)
+    {
+        uint8_t color = 0;
+        for (int s = 0; s <= length; s++)
+        {
+            if (pattern->track[t].step[s].note >= 0)
+            {
+                color = instrumentColor(pattern->track[t].step[s].instrument);
+                break;
+            }
+        }
+        uint8_t& pair = songColors[patternIdx][t / 2];
+        pair = (t & 1) ? ((pair & 0x0F) | (color << 4)) : ((pair & 0xF0) | color);
+    }
+    songColorsValid[patternIdx / 8] |= (1 << (patternIdx % 8));
+}
+
+void cFileManager::invalidateSongColors()
+{
+    memset(songColorsValid, 0, sizeof(songColorsValid));
+}
+
+uint8_t cFileManager::getSongColor(uint8_t patternIdx, uint8_t track)
+{
+    if (!(songColorsValid[patternIdx / 8] & (1 << (patternIdx % 8))) || track >= kAllTracks)
+        return 0;
+    uint8_t pair = songColors[patternIdx][track / 2];
+    return (track & 1) ? (pair >> 4) : (pair & 0x0F);
+}
+
+void cFileManager::scanSongColors()
+{
+    if (!sequencer.isStop() || getStatus() != fmIdle)
+        return;
+
+    for (int pos = 0; pos < SONG_MAX; pos++)
+    {
+        uint8_t idx = mtProject.song.playlist[pos];
+        if (idx == PLAYLIST_EMPTY_SLOT)
+            break;
+        if (songColorsValid[idx / 8] & (1 << (idx % 8)))
+            continue;
+
+        if (idx == mtProject.values.actualPattern)
+        {
+            computeSongColors(idx, sequencer.getPatternToUI());
+            continue;
+        }
+
+        char patternPath[PATCH_SIZE]{ 0 };
+        snprintf(patternPath, PATCH_SIZE, cWorkspacePatternFileFormat, idx);
+        if (!fileSystem->exists(patternPath))
+        {
+            songColors[idx][0] = 0;
+            memset(songColors[idx], 0, sizeof(songColors[idx]));
+            songColorsValid[idx / 8] |= (1 << (idx % 8));
+            continue;
+        }
+        if (readPatternFile(patternPath, sequencer.getPatternToLoadFromFile()))
+        {
+            computeSongColors(idx, sequencer.getPatternToLoadFromFile());
+        }
+    }
+}
+
 bool cFileManager::updatePatternBitmask(uint8_t patternIdx, Sequencer::strPattern* sourcePattern)
 {
     assert(patternIdx > 0);
+
+    computeSongColors(patternIdx, sourcePattern);
 
     uint8_t bitmaskIdx = patternIdx - 1;
 
