@@ -989,6 +989,7 @@ class Sequencer
     void reset_actual_pos(void);
     void reset_actual_pos(uint8_t row, uint8_t delta = 0);
     void resetChanceState(void);
+    bool isLegatoStep(uint8_t row, const strPlayer::strPlayerTrack::strSendStep* next);
     bool evaluateChanceFx(uint8_t row, uint8_t value);
 
   public:
