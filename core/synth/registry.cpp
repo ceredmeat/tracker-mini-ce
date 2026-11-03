@@ -4,6 +4,7 @@
 #include "PolySynth/sdk/InstrumentTypeRegistry.h"
 #include "engines/ChiptuneSynthVoice.h"
 #include "engines/CeSynthVoices.h"
+#include "engines/OtSynthVoices.h"
 
 namespace polysynth
 {
@@ -37,6 +38,9 @@ void InstrumentTypeRegistry::registerInstrumentTypes(
     // tracker-mini-ce
     registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kWaveSynth), createWaveSynth());
     registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kPhaseSynth), createPhaseSynth());
+    // tracker-mini-ce: OpenTracker engines (MIT, Marcin Spoczynski)
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtFm4Synth), createOtFm4Synth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtJu6Synth), createOtJu6Synth());
 }
 
 } // namespace polysynth

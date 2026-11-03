@@ -84,6 +84,10 @@ enum enDisplayBitmaps
     kBitmapWAVE,
     kBitmapMiniPHASE,
     kBitmapPHASE,
+    kBitmapMiniFM4,
+    kBitmapFM4,
+    kBitmapMiniJU6,
+    kBitmapJU6,
 
 #endif
 
