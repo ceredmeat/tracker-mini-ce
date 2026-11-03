@@ -5,6 +5,7 @@
 #include "ThemeManager.h"
 #include "fileManager.h"
 #include "ceModsExtra.h"
+#include "ceInsert/ceFxPack.h"
 
 #include "imageViewer/imageViewerDefs.h"
 
@@ -152,6 +153,70 @@ static const char djResonanceDesc[] = { "How much the DJ Filter (Global Mixer 3/
 static void setDjResonance() { newFileManager.setProjectStructChanged(); }
 const strItemTypeListTextWithAction setupDjResonance{ &ceExtra::at(ceExtra::kDjResonance), 3, djResonanceTexts, setDjResonance };
 cMenuItem melDjResonance(menuProject, "DJ filter res.", djResonanceDesc, menuTypeItemListTextWithAction, &setupDjResonance);
+#endif
+#ifdef PLATFORM_IMX
+// tracker-mini-ce: FX Pack (stored in the project, see ceModsExtra.h and ceFxPack.h)
+cMenuGroup menuFxPack(menuProject, "FX Pack", 4);
+cMenuGroup menuFxDirt(menuFxPack, "Dirt", 6);
+cMenuGroup menuFxLofi(menuFxPack, "LoFi", 5);
+cMenuGroup menuFxTape(menuFxPack, "Tape", 5);
+cMenuGroup menuFxChorus(menuFxPack, "Chorus", 4);
+static const char* const fxShapeTexts[4] = { "Soft", "Hard", "Fold", "Asym" };
+static const char* const fxBits12Texts[13] = { "Off", "15", "14", "13", "12", "11", "10", "9", "8", "7", "6", "5", "4" };
+static const char* const fxBits14Texts[15] = { "Off", "15", "14", "13", "12", "11", "10", "9", "8", "7", "6", "5", "4", "3", "2" };
+static const char* const fxSpeakerTexts[5] = { "Off", "Radio", "Phone", "Handheld", "TV" };
+static const char* const fxOnOffTexts[2] = { "Off", "On" };
+static const char fxDirtDesc[] = { "Distortion on the master. Drive 0 is Off. Bit crush and "
+                                   "Downsample add digital grit, Darken rolls off the top." };
+static const char fxLofiDesc[] = { "Lo-fi on the master. Mix 0 is Off. Speaker imitates small "
+                                   "speakers; Mono folds the stereo." };
+static const char fxTapeDesc[] = { "Tape saturation and pitch wobble on the master. Drive 0 "
+                                   "is Off. Wow is slow, Flutter fast." };
+static const char fxChorusDesc[] = { "Stereo chorus on the master. Mix 0 is Off. Narrow 100 "
+                                     "makes both sides move together." };
+static void setFxSetting() { newFileManager.setProjectStructChanged(); }
+#define CE_FX(p) &ceFx::param(ceFx::p)
+const strItemTypeListValues setupFxDirtDrive{ CE_FX(kDirtDrive), 0, 100, 1, 0 };
+const strItemTypeListTextWithAction setupFxDirtShape{ CE_FX(kDirtShape), 4, fxShapeTexts, setFxSetting };
+const strItemTypeListTextWithAction setupFxDirtBits{ CE_FX(kDirtBits), 13, fxBits12Texts, setFxSetting };
+const strItemTypeListValues setupFxDirtRate{ CE_FX(kDirtRate), 0, 15, 1, 1 };
+const strItemTypeListValues setupFxDirtDarken{ CE_FX(kDirtDarken), 0, 100, 1, 0 };
+const strItemTypeListValues setupFxDirtDry{ CE_FX(kDirtDry), 0, 100, 1, 0 };
+cMenuItem melFxDirtDrive(menuFxDirt, "Drive", fxDirtDesc, menuTypeItemListValues, &setupFxDirtDrive);
+cMenuItem melFxDirtShape(menuFxDirt, "Shape", fxDirtDesc, menuTypeItemListTextWithAction, &setupFxDirtShape);
+cMenuItem melFxDirtBits(menuFxDirt, "Bit crush", fxDirtDesc, menuTypeItemListTextWithAction, &setupFxDirtBits);
+cMenuItem melFxDirtRate(menuFxDirt, "Downsample", fxDirtDesc, menuTypeItemListValues, &setupFxDirtRate);
+cMenuItem melFxDirtDarken(menuFxDirt, "Darken", fxDirtDesc, menuTypeItemListValues, &setupFxDirtDarken);
+cMenuItem melFxDirtDry(menuFxDirt, "Dry blend", fxDirtDesc, menuTypeItemListValues, &setupFxDirtDry);
+const strItemTypeListValues setupFxLofiMix{ CE_FX(kLofiMix), 0, 100, 1, 0 };
+const strItemTypeListTextWithAction setupFxLofiBits{ CE_FX(kLofiBits), 15, fxBits14Texts, setFxSetting };
+const strItemTypeListValues setupFxLofiRate{ CE_FX(kLofiRate), 0, 31, 1, 1 };
+const strItemTypeListTextWithAction setupFxLofiSpeaker{ CE_FX(kLofiSpeaker), 5, fxSpeakerTexts, setFxSetting };
+const strItemTypeListTextWithAction setupFxLofiMono{ CE_FX(kLofiMono), 2, fxOnOffTexts, setFxSetting };
+cMenuItem melFxLofiMix(menuFxLofi, "Mix", fxLofiDesc, menuTypeItemListValues, &setupFxLofiMix);
+cMenuItem melFxLofiBits(menuFxLofi, "Bit crush", fxLofiDesc, menuTypeItemListTextWithAction, &setupFxLofiBits);
+cMenuItem melFxLofiRate(menuFxLofi, "Downsample", fxLofiDesc, menuTypeItemListValues, &setupFxLofiRate);
+cMenuItem melFxLofiSpeaker(menuFxLofi, "Speaker", fxLofiDesc, menuTypeItemListTextWithAction, &setupFxLofiSpeaker);
+cMenuItem melFxLofiMono(menuFxLofi, "Mono", fxLofiDesc, menuTypeItemListTextWithAction, &setupFxLofiMono);
+const strItemTypeListValues setupFxTapeDrive{ CE_FX(kTapeDrive), 0, 100, 1, 0 };
+const strItemTypeListValues setupFxTapeDarken{ CE_FX(kTapeDarken), 0, 100, 1, 0 };
+const strItemTypeListValues setupFxTapeWow{ CE_FX(kTapeWow), 0, 100, 1, 0 };
+const strItemTypeListValues setupFxTapeFlutter{ CE_FX(kTapeFlutter), 0, 100, 1, 0 };
+const strItemTypeListValues setupFxTapeDry{ CE_FX(kTapeDry), 0, 100, 1, 0 };
+cMenuItem melFxTapeDrive(menuFxTape, "Drive", fxTapeDesc, menuTypeItemListValues, &setupFxTapeDrive);
+cMenuItem melFxTapeDarken(menuFxTape, "Darken", fxTapeDesc, menuTypeItemListValues, &setupFxTapeDarken);
+cMenuItem melFxTapeWow(menuFxTape, "Wow", fxTapeDesc, menuTypeItemListValues, &setupFxTapeWow);
+cMenuItem melFxTapeFlutter(menuFxTape, "Flutter", fxTapeDesc, menuTypeItemListValues, &setupFxTapeFlutter);
+cMenuItem melFxTapeDry(menuFxTape, "Dry blend", fxTapeDesc, menuTypeItemListValues, &setupFxTapeDry);
+const strItemTypeListValues setupFxChorusMix{ CE_FX(kChorusMix), 0, 100, 1, 0 };
+const strItemTypeListValues setupFxChorusRate{ CE_FX(kChorusRate), 0, 100, 1, 0 };
+const strItemTypeListValues setupFxChorusDepth{ CE_FX(kChorusDepth), 0, 100, 1, 0 };
+const strItemTypeListValues setupFxChorusNarrow{ CE_FX(kChorusNarrow), 0, 100, 1, 0 };
+cMenuItem melFxChorusMix(menuFxChorus, "Mix", fxChorusDesc, menuTypeItemListValues, &setupFxChorusMix);
+cMenuItem melFxChorusRate(menuFxChorus, "Rate", fxChorusDesc, menuTypeItemListValues, &setupFxChorusRate);
+cMenuItem melFxChorusDepth(menuFxChorus, "Depth", fxChorusDesc, menuTypeItemListValues, &setupFxChorusDepth);
+cMenuItem melFxChorusNarrow(menuFxChorus, "Narrow", fxChorusDesc, menuTypeItemListValues, &setupFxChorusNarrow);
+#undef CE_FX
 #endif
 
 // general
