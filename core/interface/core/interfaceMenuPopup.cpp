@@ -3,7 +3,17 @@
 
 InterfaceMenuPopup mtMenuPopup;
 
+#include "ceLooperConfig.h"
+#if defined(CE_LOOPER_ONLY)
+// the looper-only firmware: the Looper, and Config for settings and the firmware update
+const uint8_t kMenuModulesCount = 2;
+const char* const kModuleNamesList[kMenuModulesCount] = { "Looper", "Config" };
+#elif defined(CE_LOOPER)
+const uint8_t kMenuModulesCount = 12;
+#else
 const uint8_t kMenuModulesCount = 11;
+#endif
+#ifndef CE_LOOPER_ONLY
 const char* const kModuleNamesList[kMenuModulesCount] = { "Pattern",
                                                           "Instrument Parameters",
                                                           "Sample Playback",
@@ -14,7 +24,12 @@ const char* const kModuleNamesList[kMenuModulesCount] = { "Pattern",
                                                           "Config",
                                                           "Perform",
                                                           "Sample Editor",
-                                                          "Sample Recorder" };
+                                                          "Sample Recorder",
+#ifdef CE_LOOPER
+                                                          "Looper",
+#endif
+};
+#endif
 
 #ifdef TRACKER_MINI
 
@@ -25,6 +40,24 @@ InterfaceMenuPopup::ModuleModes masterModes = { 3, masterOptions, { 3, 0 } };
 uint32_t performOptions[2] = { 1, 2 };
 InterfaceMenuPopup::ModuleModes performModes = { 2, performOptions, { 2, 0 } };
 
+#ifdef CE_LOOPER_ONLY
+// twelve entries so the Fn key bindings (0-11, shared with the tracker firmware) stay in range:
+// the first two are the menu, the rest lead to the Looper
+const InterfaceMenuPopup::ModuleRef InterfaceMenuPopup::modules[12] = {
+    { mtInterface.modules[11], interfaceButtonLooperVirtual, 0, nullptr },
+    { mtInterface.modules[7], interfaceButtonConfig, 0, nullptr },
+    { mtInterface.modules[11], interfaceButtonLooperVirtual, 0, nullptr },
+    { mtInterface.modules[11], interfaceButtonLooperVirtual, 0, nullptr },
+    { mtInterface.modules[11], interfaceButtonLooperVirtual, 0, nullptr },
+    { mtInterface.modules[11], interfaceButtonLooperVirtual, 0, nullptr },
+    { mtInterface.modules[11], interfaceButtonLooperVirtual, 0, nullptr },
+    { mtInterface.modules[11], interfaceButtonLooperVirtual, 0, nullptr },
+    { mtInterface.modules[11], interfaceButtonLooperVirtual, 0, nullptr },
+    { mtInterface.modules[11], interfaceButtonLooperVirtual, 0, nullptr },
+    { mtInterface.modules[11], interfaceButtonLooperVirtual, 0, nullptr },
+    { mtInterface.modules[11], interfaceButtonLooperVirtual, 0, nullptr },
+};
+#else
 const InterfaceMenuPopup::ModuleRef InterfaceMenuPopup::modules[kMenuModulesCount] = {
     { mtInterface.modules[2], interfaceButtonPattern, 0, nullptr },
     { mtInterface.modules[5], interfaceButtonParams, 0, &instrumentParamModes },
@@ -37,8 +70,12 @@ const InterfaceMenuPopup::ModuleRef InterfaceMenuPopup::modules[kMenuModulesCoun
     { mtInterface.modules[9], interfaceButtonPerformance, 0, &performModes },
     { mtInterface.modules[6], interfaceButtonSampleEdit, 0, nullptr },
     { mtInterface.modules[8], interfaceButtonSampleRec, 0, nullptr },
+#ifdef CE_LOOPER
+    { mtInterface.modules[11], interfaceButtonLooperVirtual, 0, nullptr },
+#endif
 
 };
+#endif // CE_LOOPER_ONLY
 
 static void functLeftPopup();
 static void functRightPopup();
@@ -89,7 +126,12 @@ void InterfaceMenuPopup::showModulePopup(ModuleBase* sourceModule,
             continue;
         }
 
+#ifdef CE_LOOPER_ONLY
+        menuFunctions[box] = box;
+        if (false)
+#else
         if (box < 8)
+#endif
         {
             menuFunctions[box] = mtConfig.interface.functionKeysBinding[box];
             if (menuFunctions[box] >= kMenuModulesCount)

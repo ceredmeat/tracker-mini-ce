@@ -10,6 +10,7 @@
 #include "core/titleBar.h"
 
 #include "imageViewer/imageViewer.h"
+#include "looper/looper.h"
 #include "instrumentEditor/instrumentEditor.h"
 #include "masterParams/masterParams.h"
 #include "patternEditor/patternEditor.h"
@@ -64,11 +65,19 @@ const hModule Interface::modules[modulesCount] = {
     &sampleRecorder,   // 8
     &performanceMode,  // 9
     &imageViewer,      // 10
+#ifdef CE_LOOPER
+    &looper,           // 11
+#else
     nullptr,           // 11
+#endif
     &masterParams,     // 12
 };
 
+#ifdef CE_LOOPER
+const uint8_t Interface::modulesButtonsCount = 12;
+#else
 const uint8_t Interface::modulesButtonsCount = 11;
+#endif
 const uint32_t Interface::modulesButtons[modulesButtonsCount][3] = {
     { interfaceButtonPerformance, 9, 0 },
     { interfaceButtonMaster, 12, 0 },
@@ -81,6 +90,9 @@ const uint32_t Interface::modulesButtons[modulesButtonsCount][3] = {
     { interfaceButtonSampleLoad, 1, 0 },
     { interfaceButtonSong, 4, 0 },
     { interfaceButtonConfig, 7, 0 },
+#ifdef CE_LOOPER
+    { interfaceButtonLooperVirtual, 11, 0 },
+#endif
 };
 
 //=======================================================================
@@ -262,7 +274,11 @@ void Interface::processStartScreen()
 #ifdef TRACKER_MINI
             initSpecialMiniTrackerButtons();
 #endif
+#ifdef CE_LOOPER_ONLY
+            activateModule(&looper, 0);   // the looper-only firmware starts in the Looper
+#else
             activateModule(&patternEditor, 0);
+#endif
             unmuteAudioOutByKey();
 
 #ifdef TRACKER_MINI
@@ -550,6 +566,15 @@ bool Interface::isInstrumentParamsScreenActive()
 bool Interface::isSamplePlayerScreenActive()
 {
     return isOnScreenModule(&samplePlayback);
+}
+
+void interfaceVirtualModuleButton(uint8_t button, uint8_t state) { mtInterface.virtualModuleButton(button, state); }
+
+void Interface::virtualModuleButton(uint8_t button, uint8_t state)
+{
+    if (state != buttonPress || onScreenModule == nullptr) return;
+    if (getButtonIndex(button) < 0) return;
+    switchModuleByButton(onScreenModule, button, 0);
 }
 
 bool Interface::isOnScreenModule(ModuleBase* module)

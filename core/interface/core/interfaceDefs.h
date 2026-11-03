@@ -171,6 +171,7 @@ enum mtInterfaceButtonsFunctions
     interfaceButtonPattern = interfaceButton22,
 
     interfaceButtonGame = interfaceButton43,
+    interfaceButtonLooperVirtual = 200, // no key: the Looper is opened from the Mini's menu
 
     interfaceButtonFx1 = interfaceButton21,
     interfaceButtonFx2 = interfaceButton20,

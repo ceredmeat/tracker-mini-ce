@@ -199,6 +199,7 @@ typedef enum enControlId
     controlIdImgGrid,
     controlIdSimpleBox,
     controlIdNotesKeyboardLabel,
+    controlIdLooperView,
 
     /*
      *

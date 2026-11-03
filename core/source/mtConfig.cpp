@@ -440,7 +440,11 @@ void checkConfig()
 
     for (uint8_t i = 0; i < 8; i++)
     {
+#ifdef CE_LOOPER_ONLY
+        if (mtConfig.interface.functionKeysBinding[i] >= 12)   // keep the tracker firmware's bindings
+#else
         if (mtConfig.interface.functionKeysBinding[i] >= kMenuModulesCount)
+#endif
         {
             mtConfig.interface.functionKeysBinding[i] = 0;
         }

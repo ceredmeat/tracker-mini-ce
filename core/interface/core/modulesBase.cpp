@@ -233,6 +233,13 @@ void InputProcessor::setPadsGlobal(void (*funct)(uint8_t, uint8_t, int16_t))
 //==================================================================================================================
 void InputProcessor::processButtonsInput(uint8_t button, uint8_t state)
 {
+    if (button >= buttonsCount)
+    {
+        // module keys without a button (the Looper) come from the Fn key bindings
+        extern void interfaceVirtualModuleButton(uint8_t button, uint8_t state);
+        interfaceVirtualModuleButton(button, state);
+        return;
+    }
     if (blockButtons[button])
     {
         return;

@@ -17,6 +17,7 @@ class AudioOutput
     {
         kStream = 0,
         kSdCardPreview = 1,
+        kLooper = 2,
         kTestWaveform = 4,
         kMetronomeTick = 5,
         kNesEmulatorSound = 6,

@@ -2,6 +2,7 @@
 #ifndef SOURCE_MTAUDIOENGINE_H_
 #define SOURCE_MTAUDIOENGINE_H_
 
+#include "AudioLooper.h"
 #include "Audio.h"
 #include "AudioInput.h"
 #include "AudioOutput.h"
@@ -248,6 +249,9 @@ class audioEngine
 #endif
     ExportQueues exportQueues;
     AudioOutput output;
+#ifdef CE_LOOPER
+    AudioLooper looper;
+#endif
     AudioAnalyzeRMS* delayRms[(int)MixerAndFxChannelType::kChannelCount];
     AudioAnalyzeRMS* polyverbRms[(int)MixerAndFxChannelType::kChannelCount];
     AudioAnalyzeRMS* dryMixRms[(int)MixerAndFxChannelType::kChannelCount];

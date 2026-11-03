@@ -25,7 +25,7 @@ MINI_POSTFIX     := $(EDITION_NAME)_$(MINI_VER_MAJOR).$(MINI_VER_MINOR).$(MINI_V
 
 .PHONY: all original plus mini ptfx clean version bump-patch bump-minor
 
-all: original plus mini
+all: original plus mini looper-mini
 
 original:
 	@echo "=================================================================="
@@ -90,6 +90,12 @@ mini:
 	@mkdir -p "$(OUT_DIR)"
 	@cp "$(IMX_DIR)/build-MINI/TrackerMini_$(MINI_POSTFIX).ptf" "$(OUT_DIR)/"
 	@echo "-> Output: $(OUT_DIR)/TrackerMini_$(MINI_POSTFIX).ptf"
+
+# the looper-only firmware for the Mini: boots into the Looper (44 MB of loop memory)
+looper-mini:
+	@rm -rf "$(CORE_DIR)/build-IMX-MINI" "$(IMX_DIR)/build-MINI"
+	$(MAKE) mini EDITION_NAME="$(subst CE,Looper,$(EDITION_NAME))" CUSTOM_DEFINES="-DCE_LOOPER_ONLY"
+	@rm -rf "$(CORE_DIR)/build-IMX-MINI" "$(IMX_DIR)/build-MINI"
 
 ptfx:
 	@mkdir -p "$(ROOT_DIR)/editor-fx-sdk/build/Effects"
