@@ -3,6 +3,8 @@
 
 #include "configEditor/configMenuActions.h"
 #include "ThemeManager.h"
+#include "fileManager.h"
+#include "ceModsExtra.h"
 
 #include "imageViewer/imageViewerDefs.h"
 
@@ -19,11 +21,11 @@
 
 #ifdef TRACKER_MINI
 constexpr uint8_t baseMenuGroupCount = 8;
-constexpr uint8_t projectMenuGroupCount = 10;
+constexpr uint8_t projectMenuGroupCount = 12;
 constexpr uint8_t generalMenuGroupCount = 9;
 #elif defined(PLATFORM_IMX)
 constexpr uint8_t baseMenuGroupCount = 7;
-constexpr uint8_t projectMenuGroupCount = 10;
+constexpr uint8_t projectMenuGroupCount = 12;
 constexpr uint8_t generalMenuGroupCount = 12;
 #else
 constexpr uint8_t baseMenuGroupCount = 6;
@@ -82,6 +84,22 @@ cMenuItem melLimiterMode(menuProject, "Limiter mode", limiterDesc, menuTypeItemL
 cMenuItem melSendsMode(menuProject, "Sends mode", sendsDesc,  menuTypeItemListTextWithAction, &setupSendsMode);
 cMenuItem melHeadroomMode(menuProject, "Extra headroom", headroomDesc,  menuTypeItemListTextWithAction, &setupHeadroomMode);
 cMenuItem melSnapToZeroMode(menuProject, "Snap to zero", snapToZeroDesc,  menuTypeItemListTextWithAction, &setupSnapToZeroMode);
+
+#ifdef PLATFORM_IMX
+// tracker-mini-ce: Auto Backup (stored in the project, see ceModsExtra.h and ceBackup.h)
+static const char* const backupKeepTexts[8] = { "Keep 5", "Keep 1", "Keep 2", "Keep 3", "Keep 10", "Keep 20", "Keep 50", "Off" };
+static const char* const backupSamplesTexts[2] = { "Yes", "No" };
+static const char backupKeepDesc[] = { "After each save, a copy of the project goes to "
+                                       "Backups/<name>/0001, 0002 ... on the card. The oldest "
+                                       "copies beyond this number are deleted." };
+static const char backupSamplesDesc[] = { "Whether the backups include the project's samples "
+                                          "folder. No: smaller and faster backups." };
+static void setCeExtraSetting() { newFileManager.setProjectStructChanged(); }
+const strItemTypeListTextWithAction setupBackupKeep{ &ceExtra::at(ceExtra::kBackupKeep), 8, backupKeepTexts, setCeExtraSetting };
+const strItemTypeListTextWithAction setupBackupSamples{ &ceExtra::at(ceExtra::kBackupSamples), 2, backupSamplesTexts, setCeExtraSetting };
+cMenuItem melBackupKeep(menuProject, "Auto backup", backupKeepDesc, menuTypeItemListTextWithAction, &setupBackupKeep);
+cMenuItem melBackupSamples(menuProject, "Backup samples", backupSamplesDesc, menuTypeItemListTextWithAction, &setupBackupSamples);
+#endif
 
 // general
 const strItemTypeListTextWithAction setupRadioRegion{ &mtConfig.general.radioRegion, 4, radioRegion, setRadioRegion };
