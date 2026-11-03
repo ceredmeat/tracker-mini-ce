@@ -462,6 +462,14 @@ void cLooper::mixerKey(int k, bool press)
     }
     else
     {
+        if ((k == 4 || k == 5) && mixStrip == k)
+        {
+            // the selected FX strip again: its effect page
+            fxSlot = (uint8_t)(k - 4);
+            fxKnob = 1;
+            showPage(kFx);
+            return;
+        }
         mixStrip = (uint8_t)k;
         if (mixStrip == 6) mixRow = 3;
         if (mixStrip >= 4 && mixRow == 2) mixRow = 3;
@@ -1193,12 +1201,7 @@ static void functPageKey(uint8_t button, uint8_t state)
         LP->showPage(cLooper::kHome);
     }
     else if (button == interfaceButtonConfig || (button == interfaceButtonMiniFn2 && LP->shift))
-    {
-        if (LP->shift && button == interfaceButtonConfig)
-            LP->showStats = !LP->showStats;
-        else
-            LP->showPage(cLooper::kConfig);
-    }
+        LP->showPage(cLooper::kConfig);
     else if (button == interfaceButtonFile || button == interfaceButtonSampleLoad || (button == interfaceButtonMiniFn3 && LP->shift))
         LP->showPage(cLooper::kFile);
     else if (button == interfaceButtonSong || (button == interfaceButtonMiniFn4 && LP->shift))

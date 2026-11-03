@@ -274,7 +274,11 @@ void Interface::processStartScreen()
 #ifdef TRACKER_MINI
             initSpecialMiniTrackerButtons();
 #endif
+#ifdef CE_LOOPER_ONLY
+            activateModule(&looper, 0);   // the looper-only firmware starts in the Looper
+#else
             activateModule(&patternEditor, 0);
+#endif
             unmuteAudioOutByKey();
 
 #ifdef TRACKER_MINI
@@ -562,6 +566,15 @@ bool Interface::isInstrumentParamsScreenActive()
 bool Interface::isSamplePlayerScreenActive()
 {
     return isOnScreenModule(&samplePlayback);
+}
+
+void interfaceVirtualModuleButton(uint8_t button, uint8_t state) { mtInterface.virtualModuleButton(button, state); }
+
+void Interface::virtualModuleButton(uint8_t button, uint8_t state)
+{
+    if (state != buttonPress || onScreenModule == nullptr) return;
+    if (getButtonIndex(button) < 0) return;
+    switchModuleByButton(onScreenModule, button, 0);
 }
 
 bool Interface::isOnScreenModule(ModuleBase* module)

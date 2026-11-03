@@ -114,6 +114,9 @@ class Interface
 
     InputProcessor* ip;
 
+    // a module key with no physical button (the Looper, from an Fn key binding)
+    void virtualModuleButton(uint8_t button, uint8_t state);
+
   private:
     friend InterfacePopups;
     friend InterfaceMenuPopup;
