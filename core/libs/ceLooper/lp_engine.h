@@ -85,13 +85,16 @@ struct Grain
     int age = 0, len = 0;
     float gainL = 1, gainR = 1, amp = 1;
     float texture = 0.5f;
+    // Clouds-style envelope
+    float envPhase = 0, envInc = 0, smooth = 0, slope = 0;
 };
 
 struct GrainParams
 {
     uint8_t spread = 20;    // 0..100
     uint8_t size = 30;      // 0..100 -> 20..500 ms
-    uint8_t density = 50;   // 0..100
+    uint8_t density = 70;   // 0..100: below the middle even, above random (Clouds); the middle is silent
+    uint8_t texture = 50;   // 0..100: window shape (Clouds)
     int8_t pitch = 0;       // semitones -24..24
     uint8_t speed = 1;      // 0 = 1/2, 1 = 1x, 2 = 2x
     uint8_t direction = 0;  // 0 fwd, 1 rev, 2 ping
@@ -178,6 +181,7 @@ struct Track
     int nextGrain = 0;
     pos_t center = 0;
     bool pingRev = false;
+    float grainPhasor = 0, grainCount = 0, grainNorm = 1, grainSizeHint = 1024;
 
     // meters
     float meter = 0;
@@ -311,6 +315,7 @@ class Engine
     void resyncOffset(Track& t, int newMode);
     void renderTrack(int ti, const float* inL, const float* inR, float* outL, float* outR);
     void renderGrains(Track& t, int ti, int n, const pos_t* centers, float* outL, float* outR);
+    void renderCloudGrains(Track& t, int n, const pos_t* centers, float* outL, float* outR);
     inline void readFrame(const Track& t, pos_t p, float& l, float& r) const;
     void writeFrame(Track& t, uint32_t frame, float l, float r, bool mix, float fb);
     void click(bool accent);

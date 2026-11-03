@@ -342,7 +342,7 @@ void cLooper::homeKey(int k, bool press)
     if (bar == kBarGrain)
     {
         if (!press) return;
-        static const int8_t knobOf[8] = {0, 1, 2, 3, -1, 4, 5, -1};
+        static const int8_t knobOf[8] = {0, 1, 2, 3, -1, 4, 5, 6};
         if (k == 4)
             bar = kBarMain;
         else if (knobOf[k] >= 0)
@@ -500,7 +500,7 @@ void cLooper::mixerChange(int d, bool fine)
         int s = mixStrip - 4;
         switch (mixRow)
         {
-            case 0: adj(engine.fx[s].knob[s == 0 && engine.fx[s].type() == kFxClouds ? 0 : 0], 0, 100); break;
+            case 0: adj(engine.fx[s].knob[0], 0, FxSlot::knobMax(engine.fx[s].type(), 0)); break;
             case 1:
                 adj(engine.chainSend[s], 0, 100);
                 break;
@@ -515,6 +515,7 @@ void cLooper::fxKey(int k, bool press)
 {
     if (!press) return;
     FxSlot& f = engine.fx[fxSlot];
+    const FxDesc& d = kFxDesc[f.type()];
     if (bar == kBarFxType)
     {
         if (k == 7)
@@ -531,6 +532,8 @@ void cLooper::fxKey(int k, bool press)
         }
         return;
     }
+    // the knob page follows the selected knob; Shift + key: the next page
+    int pageBase = (fxKnob < d.knobs ? fxKnob / 4 : 0) * 4;
     switch (k)
     {
         case 0:
@@ -542,15 +545,18 @@ void cLooper::fxKey(int k, bool press)
         case 3:
         case 4:
         {
-            int kn = k - 1 + ((shift && kFxDesc[f.type()].knobs > 4) ? 4 : 0);
-            if (kn < kFxDesc[f.type()].knobs)
+            int base = pageBase;
+            if (shift) base = (base + 4 < d.knobs) ? base + 4 : 0;
+            int kn = base + k - 1;
+            if (kn < d.knobs)
             {
+                if (fxKnob == kn && FxSlot::knobMax(f.type(), kn) == 1)
+                    f.knob[kn] = f.knob[kn] ? 0 : 1;   // on / off knobs (Freeze): press again to toggle
                 fxKnob = (uint8_t)kn;
-                if (f.type() == kFxClouds && kn == 7) f.knob[7] = f.knob[7] >= 50 ? 0 : 100;   // freeze: a toggle
             }
             break;
         }
-        case 5: fxKnob = 8; break;
+        case 5: fxKnob = kFxReturnKnob; break;
         case 6:
             fxSlot ^= 1;
             fxKnob = 1;
@@ -814,6 +820,7 @@ void cLooper::encoder(int16_t v)
                     case 3: g.pitch = (int8_t)clampi(g.pitch + d, -24, 24); break;
                     case 4: g.speed = (uint8_t)clampi(g.speed + d, 0, 2); break;
                     case 5: g.direction = (uint8_t)clampi(g.direction + d, 0, 2); break;
+                    case 6: g.texture = (uint8_t)clampi(g.texture + d, 0, 100); break;
                 }
                 refreshKeys();
                 return;
@@ -827,10 +834,14 @@ void cLooper::encoder(int16_t v)
         case kFx:
         {
             FxSlot& f = engine.fx[fxSlot];
-            if (fxKnob == 8)
+            if (fxKnob == kFxReturnKnob)
                 engine.fxReturn[fxSlot] = (uint8_t)clampi(engine.fxReturn[fxSlot] + d, 0, 100);
             else if (fxKnob < kFxDesc[f.type()].knobs)
-                f.knob[fxKnob] = (uint8_t)clampi(f.knob[fxKnob] + d * (shift ? 1 : 2), 0, 100);
+            {
+                int mx = FxSlot::knobMax(f.type(), fxKnob);
+                int step = mx < 100 ? 1 : (shift ? 1 : 2);   // choices step one at a time
+                f.knob[fxKnob] = (uint8_t)clampi(f.knob[fxKnob] + d * step, 0, mx);
+            }
             break;
         }
         case kInput: inputChange(inRow, inCol, d); break;
@@ -910,8 +921,10 @@ void cLooper::pad(uint8_t p, uint8_t state)
             if (perform)
             {
                 // freeze a Clouds slot: row 1 = FX 1, row 2 = FX 2
-                if (row < kFxSlots && engine.fx[row].type() == kFxClouds)
-                    engine.fx[row].knob[7] = engine.fx[row].knob[7] >= 50 ? 0 : 100;
+                if (row < kFxSlots && engine.fx[row].type() == kFxGrains)
+                    engine.fx[row].knob[7] ^= 1;
+                else if (row < kFxSlots && engine.fx[row].type() == kFxClouds)
+                    engine.fx[row].knob[9] ^= 1;
             }
             else
                 engine.clear(row);
@@ -1075,7 +1088,14 @@ static void functLeft(uint8_t state)
     switch (LP->page)
     {
         case cLooper::kMixer: LP->mixStrip = (uint8_t)clampi(LP->mixStrip - 1, 0, 6); break;
-        case cLooper::kFx: LP->fxKnob = (uint8_t)clampi(LP->fxKnob - 1, 0, 8); break;
+        case cLooper::kFx:
+        {
+            int n = kFxDesc[engine.fx[LP->fxSlot].type()].knobs;
+            int cur = LP->fxKnob == kFxReturnKnob ? n : LP->fxKnob;
+            cur = clampi(cur - 1, 0, n);
+            LP->fxKnob = (uint8_t)(cur == n ? kFxReturnKnob : cur);
+            break;
+        }
         case cLooper::kInput:
             LP->inCol = 0;
             if (LP->inRow > 3) LP->inRow = 3;
@@ -1093,7 +1113,14 @@ static void functRight(uint8_t state)
     switch (LP->page)
     {
         case cLooper::kMixer: LP->mixStrip = (uint8_t)clampi(LP->mixStrip + 1, 0, 6); break;
-        case cLooper::kFx: LP->fxKnob = (uint8_t)clampi(LP->fxKnob + 1, 0, 8); break;
+        case cLooper::kFx:
+        {
+            int n = kFxDesc[engine.fx[LP->fxSlot].type()].knobs;
+            int cur = LP->fxKnob == kFxReturnKnob ? n : LP->fxKnob;
+            cur = clampi(cur + 1, 0, n);
+            LP->fxKnob = (uint8_t)(cur == n ? kFxReturnKnob : cur);
+            break;
+        }
         case cLooper::kInput: LP->inCol = 1; break;
         case cLooper::kEditor: LP->edMarker = 1; break;
         case cLooper::kManual: LP->manualPage = (uint8_t)clampi(LP->manualPage + 1, 0, 7); break;

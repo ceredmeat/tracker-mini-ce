@@ -20,7 +20,11 @@
 namespace lp
 {
 
-constexpr float kSampleRate = 44117.64706f;
+#if defined(PLATFORM_IMX)
+constexpr float kSampleRate = 44100.0f;        // Tracker+ / Mini: exactly 44.1 kHz
+#else
+constexpr float kSampleRate = 44117.64706f;    // the original Tracker
+#endif
 constexpr int kBlock = 128;
 constexpr float kPi = 3.14159265f;
 constexpr float kTwoPi = 6.2831853f;

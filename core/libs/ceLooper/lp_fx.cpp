@@ -2,6 +2,10 @@
 
 #include "lp_fx.h"
 
+#include "clouds/dsp/granular_processor.h"
+
+#include <new>
+
 #include <stdio.h>
 #include <string.h>
 
@@ -21,7 +25,14 @@ const FxDesc kFxDesc[kFxTypes] = {
     {"Reverse", 4, {"Time", "Feedback", "Tone", "Width"}, {65, 30, 60, 60}},
     {"Prime time", 4, {"Time", "Feedback", "Mod", "Tone"}, {46, 40, 30, 55}},
     {"Lo-fi", 4, {"Bits", "Rate", "Drive", "Tone"}, {50, 40, 30, 50}},
+    {"Clouds", 12,
+     {"Position", "Size", "Pitch", "Density", "Texture", "Blend", "Spread", "Feedback", "Reverb", "Freeze", "Mode", "Quality"},
+     {30, 50, 50, 65, 50, 100, 50, 0, 30, 0, 0, 0},
+     {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 2}},
 };
+
+static const char* const kCloudsModes[4] = {"Granular", "Stretch", "Looping", "Spectral"};
+static const char* const kCloudsQuality[3] = {"Stereo", "Lo-fi", "Mono"};
 
 const float kDelayTimeBars[kDelayTimes] = {1.0f / 32,  1.0f / 24, 1.0f / 16, 1.0f / 12, 3.0f / 32,
                                            1.0f / 8,   1.0f / 6,  3.0f / 16, 1.0f / 4,  1.0f / 3,
@@ -85,6 +96,21 @@ void fxKnobText(int type, int k, uint8_t v, char* out, int outLen)
             }
             break;
         case kFxClouds:
+            switch (k)
+            {
+                case 2: snprintf(out, outLen, "%+d st", (v - 50) * 24 / 50); return;
+                case 3:
+                    if (v > 47 && v < 53)
+                        snprintf(out, outLen, "None");
+                    else
+                        snprintf(out, outLen, "%s %d", v < 50 ? "Even" : "Rand", v < 50 ? (50 - v) * 2 : (v - 50) * 2);
+                    return;
+                case 9: snprintf(out, outLen, "%s", v ? "On" : "Off"); return;
+                case 10: snprintf(out, outLen, "%s", kCloudsModes[v & 3]); return;
+                case 11: snprintf(out, outLen, "%s", kCloudsQuality[v % 3]); return;
+                default: snprintf(out, outLen, "%d %%", v); return;
+            }
+        case kFxGrains:
             if (k == 1)
             {
                 snprintf(out, outLen, "%d ms", (int)expMap(v, 20.0f, 1000.0f));
@@ -97,7 +123,7 @@ void fxKnobText(int type, int k, uint8_t v, char* out, int outLen)
             }
             if (k == 7)
             {
-                snprintf(out, outLen, "%s", v >= 50 ? "On" : "Off");
+                snprintf(out, outLen, "%s", v ? "On" : "Off");
                 return;
             }
             break;
@@ -123,20 +149,26 @@ void FxSlot::init(void* mem, uint32_t bytes)
 {
     mem_ = (uint8_t*)mem;
     bytes_ = bytes;
-    line_ = (int16_t*)mem_;
-    lineFrames_ = bytes_ / 4;
     memset(mem_, 0, bytes_);
-    setType(type_);
+    for (int k = 0; k < kFxKnobs; k++)
+        knob[k] = kFxDesc[pendingType_].def[k];
+    type_ = pendingType_;
+    applyType();
     clearing_ = false;
 }
 
+// UI side: new knobs now, the switch itself on the audio side
 void FxSlot::setType(int type)
 {
-    type_ = (uint8_t)clampi(type, 0, kFxTypes - 1);
+    type = clampi(type, 0, kFxTypes - 1);
     for (int k = 0; k < kFxKnobs; k++)
-        knob[k] = kFxDesc[type_].def[k];
-    clearPos_ = 0;
-    clearing_ = true;
+        knob[k] = kFxDesc[type].def[k];
+    pendingType_ = (uint8_t)type;
+}
+
+// audio side, after the memory has been cleared: lay out the memory for the type
+void FxSlot::applyType()
+{
     wr_ = 0;
     curDelay_[0] = curDelay_[1] = 0;
     fbState_[0] = fbState_[1] = 0;
@@ -144,9 +176,12 @@ void FxSlot::setType(int type)
     memset(cg_, 0, sizeof(cg_));
     revAge_ = 0;
     revStart_ = 0;
+    revChunk_ = 0;
     visCount = 0;
+    clouds_ = nullptr;
+    line_ = (int16_t*)mem_;
+    lineFrames_ = bytes_ / 4;
 
-    // carve the reverb lines
     if (type_ == kFxReverb || type_ == kFxShimmer)
     {
         static const int base[kFdn] = {1123, 1291, 1453, 1621, 1787, 1949, 2113, 2281};
@@ -172,10 +207,27 @@ void FxSlot::setType(int type)
         line_ = (int16_t*)f;
         lineFrames_ = (uint32_t)((mem_ + bytes_) - (uint8_t*)f) / 4;
     }
-    else
+    else if (type_ == kFxClouds)
     {
-        line_ = (int16_t*)mem_;
-        lineFrames_ = bytes_ / 4;
+        // the processor object, then its two buffers. Each channel's sample buffer stays
+        // below 128 K samples (Clouds' grains use 16.16 positions): stereo 1.5 s, lo-fi 3 s,
+        // mono 2 s at 44.1 kHz (the module: 1 / 2 / 2 s at 32 kHz)
+        const uint32_t objBytes = (sizeof(clouds::GranularProcessor) + 63) & ~63u;
+        const uint32_t smallBytes = 128u * 1024u;
+        const uint32_t largeBytes = 128u * 1024u + 48u * 1024u;
+        if (objBytes + smallBytes + largeBytes <= bytes_)
+        {
+            clouds::GranularProcessor* p = new (mem_) clouds::GranularProcessor();
+            uint8_t* large = mem_ + objBytes;
+            uint8_t* small = large + largeBytes;
+            p->Init(large, largeBytes, small, smallBytes);
+            p->set_num_channels(2);
+            p->set_low_fidelity(false);
+            p->set_playback_mode(clouds::PLAYBACK_MODE_GRANULAR);
+            cloudsMode_ = 0;
+            cloudsQuality_ = 0;
+            clouds_ = p;
+        }
     }
 }
 
@@ -186,11 +238,24 @@ void FxSlot::clearStep()
     if (clearPos_ + chunk > bytes_) chunk = bytes_ - clearPos_;
     memset(mem_ + clearPos_, 0, chunk);
     clearPos_ += chunk;
-    if (clearPos_ >= bytes_) clearing_ = false;
+    if (clearPos_ >= bytes_)
+    {
+        clearing_ = false;
+        applyType();
+    }
 }
 
 void FxSlot::process(const float* inL, const float* inR, float* outL, float* outR, int n, float barFrames)
 {
+    // a new type: clear the memory (a piece per block, silent), then lay it out. Not while
+    // the main loop is inside Clouds' Prepare().
+    if (pendingType_ != type_ && !clearing_ && !preparing_)
+    {
+        type_ = pendingType_;
+        clouds_ = nullptr;
+        clearPos_ = 0;
+        clearing_ = true;
+    }
     if (clearing_)
     {
         clearStep();
@@ -207,7 +272,8 @@ void FxSlot::process(const float* inL, const float* inR, float* outL, float* out
         case kFxShimmer: procReverb(inL, inR, outL, outR, n, true); break;
         case kFxChorus: procChorus(inL, inR, outL, outR, n, false); break;
         case kFxFlanger: procChorus(inL, inR, outL, outR, n, true); break;
-        case kFxClouds: procClouds(inL, inR, outL, outR, n); break;
+        case kFxGrains: procClouds(inL, inR, outL, outR, n); break;
+        case kFxClouds: procMiClouds(inL, inR, outL, outR, n); break;
         case kFxPhaser: procPhaser(inL, inR, outL, outR, n); break;
         case kFxReverse: procReverse(inL, inR, outL, outR, n, barFrames); break;
         case kFxPrime: procPrime(inL, inR, outL, outR, n, barFrames); break;
@@ -474,7 +540,7 @@ void FxSlot::procClouds(const float* inL, const float* inR, float* outL, float* 
 {
     uint32_t frames = (uint32_t)(4.0f * kSampleRate);
     if (frames > lineFrames_) frames = lineFrames_;
-    bool freeze = knob[7] >= 50;
+    bool freeze = knob[7] >= 1;
     float size = expMap(knob[1], 20.0f, 1000.0f) * kSampleRate / 1000.0f;
     float pitch = powf(2.0f, ((knob[2] - 50) * 24.0f / 50.0f) / 12.0f);
     float texture = knob[4] * 0.01f;
@@ -680,6 +746,78 @@ void FxSlot::procLofi(const float* inL, const float* inR, float* outL, float* ou
             (c ? outR : outL)[i] = tone_[c].lp(x);
         }
     }
+}
+
+//------------------------------------------------------------------------------
+// Mutable Instruments' Clouds
+
+void FxSlot::prepare()
+{
+    if (type_ != kFxClouds || clearing_ || pendingType_ != type_ || !clouds_) return;
+    preparing_ = true;
+    clouds::GranularProcessor* p = (clouds::GranularProcessor*)clouds_;
+    uint8_t mode = knob[10] & 3, q = knob[11] % 3;
+    if (mode != cloudsMode_)
+    {
+        p->set_playback_mode((clouds::PlaybackMode)mode);
+        cloudsMode_ = mode;
+    }
+    if (q != cloudsQuality_)
+    {
+        // Stereo: 2 channels 16-bit; Lo-fi: 2 channels 8-bit; Mono: 1 channel 16-bit
+        p->set_num_channels(q == 2 ? 1 : 2);
+        p->set_low_fidelity(q == 1);
+        cloudsQuality_ = q;
+    }
+    p->Prepare();
+    preparing_ = false;
+}
+
+void FxSlot::procMiClouds(const float* inL, const float* inR, float* outL, float* outR, int n)
+{
+    clouds::GranularProcessor* p = (clouds::GranularProcessor*)clouds_;
+    if (!p)
+    {
+        for (int i = 0; i < n; i++)
+            outL[i] = outR[i] = 0;
+        return;
+    }
+    clouds::Parameters* pr = p->mutable_parameters();
+    // 0..1, kept just under 1: Clouds' table lookups read one entry past the end at exactly 1
+    // (harmless on the module, where that entry is multiplied by 0; not asked of it here)
+    auto u = [&](int k) { return knob[k] >= 100 ? 0.9999f : knob[k] * 0.01f; };
+    pr->position = u(0);
+    pr->size = u(1);
+    pr->pitch = (knob[2] - 50) * 24.0f / 50.0f;
+    pr->density = u(3);
+    pr->texture = u(4);
+    pr->dry_wet = u(5);
+    pr->stereo_spread = u(6);
+    pr->feedback = u(7);
+    pr->reverb = u(8);
+    pr->freeze = knob[9] >= 1;
+    pr->trigger = false;
+    pr->gate = false;
+    p->set_freeze(pr->freeze);
+
+    clouds::ShortFrame in[clouds::kMaxBlockSize], out[clouds::kMaxBlockSize];
+    for (int o = 0; o < n; o += (int)clouds::kMaxBlockSize)
+    {
+        int m = n - o < (int)clouds::kMaxBlockSize ? n - o : (int)clouds::kMaxBlockSize;
+        for (int i = 0; i < m; i++)
+        {
+            in[i].l = sat16(inL[o + i]);
+            in[i].r = sat16(inR[o + i]);
+        }
+        p->Process(in, out, m);
+        for (int i = 0; i < m; i++)
+        {
+            outL[o + i] = out[i].l;
+            outR[o + i] = out[i].r;
+        }
+    }
+    lfo = 0;
+    visCount = 0;
 }
 
 } // namespace lp

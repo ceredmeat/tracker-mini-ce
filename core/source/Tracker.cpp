@@ -1,3 +1,4 @@
+#include "AudioLooper.h"
 #include "Platform.h"
 #include "Profiler.h"
 #include "TrackerImpl.h"
@@ -166,6 +167,9 @@ void TrackerImpl::update()
     mtInterface.update();
     engine.updateSdStream();
     sequencer.update();
+#ifdef CE_LOOPER
+    AudioLooper::mainLoop();   // the looper's Clouds housekeeping
+#endif
 }
 
 void TrackerImpl::updateAudioBuffers(void* left, void* right, int length)
