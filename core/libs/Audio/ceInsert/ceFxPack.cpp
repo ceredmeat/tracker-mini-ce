@@ -3,8 +3,9 @@
 //
 // Each effect fades in and out over about ten blocks (30 ms) when it's switched on or off,
 // so switching doesn't click; Dirt and Tape keep the level about even as the drive goes up.
-// The delay lines (Tape, Chorus; 8 KB) live in the external RAM and are cleared when an
-// effect switches on.
+// The delay lines (Tape, Chorus, 16-bit) and the work buffer, 7 KB in all, come from the
+// heap once at start-up (the external RAM is full on the Tracker+); without them the FX
+// Pack stays off. A delay line is cleared when its effect switches on.
 
 #include "ceFxPack.h"
 #include "../ceMasterInsert.h"
@@ -25,7 +26,7 @@ uint8_t& param(Param p)
 
 #ifdef PLATFORM_IMX
 
-#include "cr_section_macros.h"
+#include <stdlib.h>
 
 using namespace ceFx;
 
@@ -38,8 +39,15 @@ constexpr float kFade = 0.1f; // per block
 
 constexpr int kTapeLen = 512;    // 11.6 ms
 constexpr int kChorusLen = 1024; // 23 ms
-__NOINIT(EXTERNAL_RAM) float tapeLine[2][kTapeLen];
-__NOINIT(EXTERNAL_RAM) float chorusLine[2][kChorusLen];
+
+struct Memory
+{
+    int16_t tape[2][kTapeLen];
+    int16_t chorus[2][kChorusLen];
+    float buf[2][AUDIO_BLOCK_SAMPLES];
+};
+Memory* const mem = (Memory*)calloc(1, sizeof(Memory)); // at start-up
+constexpr float kLineScale = 32767.0f;
 
 struct OnePole
 {
@@ -74,13 +82,20 @@ inline int16_t toS16(float v)
     return (int16_t)v;
 }
 
+inline int16_t sat(float v) // to a 16-bit delay line
+{
+    v *= kLineScale;
+    if (v > 32767.0f) return 32767;
+    if (v < -32768.0f) return -32768;
+    return (int16_t)v;
+}
+
 inline float ramp(float a, bool on)
 {
     if (on) return a + kFade > 1.0f ? 1.0f : a + kFade;
     return a - kFade < 0.0f ? 0.0f : a - kFade;
 }
 
-__NOINIT(EXTERNAL_RAM) float buf[2][kN];
 
 //------------------------------------------------------------------------------ Dirt
 struct Dirt
@@ -133,7 +148,7 @@ struct Dirt
             float g = amount, gs = (target - amount) / kN;
             for (int i = 0; i < kN; i++)
             {
-                float x = buf[c][i];
+                float x = mem->buf[c][i];
                 float y = shape(x * pre, type) * makeup;
                 if (type == 3) y = dc[c].hp(y, aDc);
                 if (bits < 16) y = quant(y, levels);
@@ -150,7 +165,7 @@ struct Dirt
                 if (dark > 0.0f) y = tone[c].lp(y, a);
                 y = dry * x + (1.0f - dry) * y;
                 g += gs;
-                buf[c][i] = x + g * (y - x);
+                mem->buf[c][i] = x + g * (y - x);
             }
         }
         amount = target;
@@ -193,7 +208,7 @@ struct Lofi
         float g = amount, gs = (target - amount) / kN;
         for (int i = 0; i < kN; i++)
         {
-            float x[2] = { buf[0][i], buf[1][i] };
+            float x[2] = { mem->buf[0][i], mem->buf[1][i] };
             float in[2] = { x[0], x[1] };
             if (mono) in[0] = in[1] = 0.5f * (x[0] + x[1]);
 
@@ -221,7 +236,7 @@ struct Lofi
                     y = softClip(y * drv[speaker]) * (1.2f / drv[speaker]);
                 }
                 y = x[c] + mix * (y - x[c]);
-                buf[c][i] = x[c] + g * (y - x[c]);
+                mem->buf[c][i] = x[c] + g * (y - x[c]);
             }
         }
         amount = target;
@@ -242,7 +257,7 @@ struct Tape
         if (!on && amount == 0.0f) return;
         if (on && amount == 0.0f)
         {
-            memset(tapeLine, 0, sizeof(tapeLine));
+            memset(mem->tape, 0, sizeof(mem->tape));
             tone[0].z = tone[1].z = dc[0].z = dc[1].z = 0.0f;
             w = 0;
         }
@@ -278,15 +293,15 @@ struct Tape
             g += gs;
             for (int c = 0; c < 2; c++)
             {
-                float x = buf[c][i];
+                float x = mem->buf[c][i];
                 // saturation with a touch of even harmonics, DC removed
                 float s = softClip(x * pre + 0.05f * d) * makeup;
                 s = dc[c].hp(s, aDc);
-                tapeLine[c][w] = s;
-                float y = tapeLine[c][r0] + fr * (tapeLine[c][r1] - tapeLine[c][r0]);
+                mem->tape[c][w] = sat(s);
+                float y = (mem->tape[c][r0] + fr * (mem->tape[c][r1] - mem->tape[c][r0])) * (1.0f / kLineScale);
                 y = tone[c].lp(y, a);
                 y = dry * x + (1.0f - dry) * y;
-                buf[c][i] = x + g * (y - x);
+                mem->buf[c][i] = x + g * (y - x);
             }
             if (++w >= kTapeLen) w = 0;
         }
@@ -307,7 +322,7 @@ struct Chorus
         if (!on && amount == 0.0f) return;
         if (on && amount == 0.0f)
         {
-            memset(chorusLine, 0, sizeof(chorusLine));
+            memset(mem->chorus, 0, sizeof(mem->chorus));
             w = 0;
         }
         float target = ramp(amount, on);
@@ -329,16 +344,16 @@ struct Chorus
             g += gs;
             for (int c = 0; c < 2; c++)
             {
-                float x = buf[c][i];
-                chorusLine[c][w] = x;
+                float x = mem->buf[c][i];
+                mem->chorus[c][w] = sat(x);
                 float rp = (float)w - (base + depth * (0.5f + 0.5f * lfo[c]));
                 if (rp < 0.0f) rp += kChorusLen;
                 int r0 = (int)rp;
                 float fr = rp - r0;
                 int r1 = r0 + 1 >= kChorusLen ? 0 : r0 + 1;
-                float dl = chorusLine[c][r0] + fr * (chorusLine[c][r1] - chorusLine[c][r0]);
+                float dl = (mem->chorus[c][r0] + fr * (mem->chorus[c][r1] - mem->chorus[c][r0])) * (1.0f / kLineScale);
                 float y = x * (1.0f - 0.5f * mix) + dl * (0.5f * mix) * 1.2f;
-                buf[c][i] = x + g * (y - x);
+                mem->buf[c][i] = x + g * (y - x);
             }
             if (++w >= kChorusLen) w = 0;
         }
@@ -352,12 +367,12 @@ void ceFxPackBlock(int16_t* left, int16_t* right)
     bool any = param(kDirtDrive) || param(kLofiMix) || param(kTapeDrive) || param(kChorusMix) ||
                dirt.amount > 0.0f || lofi.amount > 0.0f || tape.amount > 0.0f ||
                chorus.amount > 0.0f;
-    if (!any) return; // all Off: untouched
+    if (!any || mem == nullptr) return; // all Off: untouched
 
     for (int i = 0; i < kN; i++)
     {
-        buf[0][i] = left[i] * (1.0f / 32768.0f);
-        buf[1][i] = right[i] * (1.0f / 32768.0f);
+        mem->buf[0][i] = left[i] * (1.0f / 32768.0f);
+        mem->buf[1][i] = right[i] * (1.0f / 32768.0f);
     }
     dirt.run();
     lofi.run();
@@ -365,8 +380,8 @@ void ceFxPackBlock(int16_t* left, int16_t* right)
     chorus.run();
     for (int i = 0; i < kN; i++)
     {
-        left[i] = toS16(buf[0][i]);
-        right[i] = toS16(buf[1][i]);
+        left[i] = toS16(mem->buf[0][i]);
+        right[i] = toS16(mem->buf[1][i]);
     }
 }
 
