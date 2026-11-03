@@ -3,6 +3,8 @@
 
 #include "configEditor/configMenuActions.h"
 #include "ThemeManager.h"
+#include "fileManager.h"
+#include "ceModsExtra.h"
 
 #include "imageViewer/imageViewerDefs.h"
 
@@ -19,11 +21,11 @@
 
 #ifdef TRACKER_MINI
 constexpr uint8_t baseMenuGroupCount = 8;
-constexpr uint8_t projectMenuGroupCount = 10;
+constexpr uint8_t projectMenuGroupCount = 13;
 constexpr uint8_t generalMenuGroupCount = 9;
 #elif defined(PLATFORM_IMX)
 constexpr uint8_t baseMenuGroupCount = 7;
-constexpr uint8_t projectMenuGroupCount = 10;
+constexpr uint8_t projectMenuGroupCount = 13;
 constexpr uint8_t generalMenuGroupCount = 12;
 #else
 constexpr uint8_t baseMenuGroupCount = 6;
@@ -82,6 +84,23 @@ cMenuItem melLimiterMode(menuProject, "Limiter mode", limiterDesc, menuTypeItemL
 cMenuItem melSendsMode(menuProject, "Sends mode", sendsDesc,  menuTypeItemListTextWithAction, &setupSendsMode);
 cMenuItem melHeadroomMode(menuProject, "Extra headroom", headroomDesc,  menuTypeItemListTextWithAction, &setupHeadroomMode);
 cMenuItem melSnapToZeroMode(menuProject, "Snap to zero", snapToZeroDesc,  menuTypeItemListTextWithAction, &setupSnapToZeroMode);
+
+#ifdef PLATFORM_IMX
+// tracker-mini-ce: Generate + Mutate (stored in the project, see ceModsExtra.h and ceGenerate.h)
+static const char* const genAlgorithmTexts[6] = { "Acid", "Euclid", "Hip-Hop", "Break Cut", "Walk", "Arp" };
+static const char* const genPercentTexts[11] = { "Auto", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%" };
+static const char genAlgorithmDesc[] = { "What Generate writes (Pattern, More, More, button 6). "
+                                         "Notes follow the Notes scale and Root note." };
+static const char genDensityDesc[] = { "How many steps Generate fills. Auto: each algorithm's own." };
+static const char genMutateDesc[] = { "How many steps Shift + Generate (Mutate) changes. Auto: 25%." };
+static void setGenSetting() { newFileManager.setProjectStructChanged(); }
+const strItemTypeListTextWithAction setupGenAlgorithm{ &ceExtra::at(ceExtra::kGenAlgorithm), 6, genAlgorithmTexts, setGenSetting };
+const strItemTypeListTextWithAction setupGenDensity{ &ceExtra::at(ceExtra::kGenDensity), 11, genPercentTexts, setGenSetting };
+const strItemTypeListTextWithAction setupGenMutate{ &ceExtra::at(ceExtra::kGenMutate), 11, genPercentTexts, setGenSetting };
+cMenuItem melGenAlgorithm(menuProject, "Generator", genAlgorithmDesc, menuTypeItemListTextWithAction, &setupGenAlgorithm);
+cMenuItem melGenDensity(menuProject, "Gen. density", genDensityDesc, menuTypeItemListTextWithAction, &setupGenDensity);
+cMenuItem melGenMutate(menuProject, "Mutate amount", genMutateDesc, menuTypeItemListTextWithAction, &setupGenMutate);
+#endif
 
 // general
 const strItemTypeListTextWithAction setupRadioRegion{ &mtConfig.general.radioRegion, 4, radioRegion, setRadioRegion };

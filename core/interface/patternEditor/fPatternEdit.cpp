@@ -1,5 +1,7 @@
 #include "mtStructs.h"
 #include "patternEditor/patternEditor.h"
+#include "ceGenerate.h"
+#include "ceModsExtra.h"
 #include <assert.h>
 #include <limits.h>
 #include <mtAudioExport.h>
@@ -48,6 +50,7 @@ static void functPastePattern();
 
 static void functNamePattern();
 static void functNameTrack();
+static void functGenerate(uint8_t state);
 
 static void functClockWarningPopupButtons(uint8_t button, uint8_t state);
 
@@ -2005,6 +2008,7 @@ void functEncoder(int16_t value)
             case 0: PTE->changeActualPattern(value); break;
             case 1: PTE->changeActualPatternLength(value); break;
             case 2: PTE->changeActualPatternEditStep(value); break;
+            case cPatternEditor::kGeneratePlace: PTE->changeGenerateAlgorithm(value); break;
             case 5:
             case 6: functUndoRedoOnLeftRight(value); break;
         }
@@ -3949,6 +3953,58 @@ static void functInvert()
 }
 
 // ##############################################################################################
+// ###############################      Generate + Mutate       #################################
+// ##############################################################################################
+// More, More, button 6 (edit mode): tap = a new part on the cursor track, Shift + tap =
+// Mutate (changes some of its steps), hold + turn = the algorithm. One undo step each.
+static void functGenerate(uint8_t state)
+{
+    if (state == buttonPress)
+    {
+        PTE->selectedPlace = cPatternEditor::kGeneratePlace;
+        PTE->generateTurned = false;
+        PTE->showGenerateLabel(true);
+        display.synchronizeRefresh();
+    }
+    else if (state == buttonRelease)
+    {
+        if (PTE->selectedPlace != cPatternEditor::kGeneratePlace)
+            return;
+        PTE->selectedPlace = -1;
+        PTE->showGenerateLabel(false);
+
+        if (!PTE->generateTurned)
+        {
+            Sequencer::strPattern* pattern = sequencer.getPatternToUI();
+            uint8_t track = PTE->trackerPattern.actualTrack;
+            newFileManager.storePatternUndoRevision();
+            if (PTE->isShiftPressed())
+            {
+                ceGen::mutate(pattern, track);
+                mtPopups.show(0, "Mutated");
+            }
+            else
+            {
+                ceGen::generate(pattern, track, ceExtra::at(ceExtra::kGenAlgorithm) % ceGen::kAlgorithmCount);
+            }
+            newFileManager.setActualPatternStructChanged();
+            PTE->refreshPattern();
+        }
+        display.synchronizeRefresh();
+    }
+}
+
+void cPatternEditor::changeGenerateAlgorithm(int16_t value)
+{
+    int a = ceExtra::at(ceExtra::kGenAlgorithm) % ceGen::kAlgorithmCount;
+    a = (a + (value > 0 ? 1 : -1) + ceGen::kAlgorithmCount) % ceGen::kAlgorithmCount;
+    ceExtra::at(ceExtra::kGenAlgorithm) = (uint8_t)a;
+    generateTurned = true;
+    newFileManager.setProjectStructChanged();
+    showGenerateLabel(true);
+}
+
+// ##############################################################################################
 // ###############################       Duplicate pattern      #################################
 // ##############################################################################################
 static void functDuplicatePattern()
@@ -5157,6 +5213,8 @@ void cPatternEditor::setActionButtonPage3Funct()
 
     ip->setButtonObj(interfaceButton0, buttonPress, functNamePattern);
     ip->setButtonObj(interfaceButton1, buttonPress, functNameTrack);
+    if (editMode)
+        ip->setButtonObj(interfaceButton5, functGenerate);
 
     ip->setButtonObj(interfaceButton7, buttonPress, functNextActionButtonPage);
 }
