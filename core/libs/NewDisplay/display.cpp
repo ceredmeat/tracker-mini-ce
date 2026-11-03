@@ -99,6 +99,8 @@
 #include "images/btype_med_108x40_L2.h"
 #include "images/arc_mini_nomark_80x28_L2.h"
 #include "images/arc_med_108x40_L2.h"
+#include "images/dx7_mini_nomark_80x28_L2.h"
+#include "images/dx7_med_108x40_L2.h"
 
 #endif
 
@@ -257,6 +259,8 @@ const strBitmap bitmaps[displayBitmapsCount] = {
     { btype_med_108x40_L2, 146400, 1080, 108, 40, L2, 27 },
     { arc_mini_nomark_80x28_L2, 147500, 560, 80, 28, L2, 20 },
     { arc_med_108x40_L2, 148100, 1080, 108, 40, L2, 27 },
+    { dx7_mini_nomark_80x28_L2, 149200, 560, 80, 28, L2, 20 },
+    { dx7_med_108x40_L2, 149800, 1080, 108, 40, L2, 27 },
 
 #endif
 };

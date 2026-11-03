@@ -1,0 +1,18 @@
+# msfa (Music Synthesizer for All), DX7 core
+
+From https://github.com/google/music-synthesizer-for-android (`app/src/main/jni`),
+Copyright 2012 Google Inc., Apache License 2.0 (LICENSE). Used by tracker-mini-ce's DX7
+engine (`core/synth/engines/Dx7SynthVoice.cpp`).
+
+Changes made for tracker-mini-ce:
+- `.cc` files renamed `.cpp` (the build picks up `.cpp`).
+- `exp2.h`, `sin.h`, `freqlut.cpp`: the lookup tables are 256 points instead of 1024 (linear
+  interpolation keeps the error below about -80 dB), placed in the on-chip OCRAM on i.MX
+  builds (`MSFA_TABLE`): the DTCM and the external RAM are full. 5 KB in all; the tanh table
+  isn't used.
+- `fm_core.cpp`: `<iostream>` and `FmCore::dump()` only with `VERBOSE`.
+- `env.cpp`, `fm_core.cpp`, `dx7note.cpp`: `using namespace std;` removed (it made `min` /
+  `max` ambiguous with `synth.h`'s).
+- `aligned_buf.h`: includes `<stddef.h>` and `<stdint.h>`.
+- `env.cpp`: `Env::init` takes `int ol` as its declaration does (on ARM newlib, int32_t is long).
+- `fm_core.h`: `FmCore::compute`'s last parameter `int`, as its definition (same ARM reason).

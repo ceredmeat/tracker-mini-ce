@@ -5,6 +5,7 @@
 #include "engines/ChiptuneSynthVoice.h"
 #include "engines/CeSynthVoices.h"
 #include "engines/OtSynthVoices.h"
+#include "engines/Dx7SynthVoice.h"
 
 namespace polysynth
 {
@@ -49,6 +50,7 @@ void InstrumentTypeRegistry::registerInstrumentTypes(
     registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtHandSynth), createOtHandSynth());
     registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtBtypeSynth), createOtBtypeSynth());
     registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtArcSynth), createOtArcSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kDx7Synth), createDx7Synth());
 }
 
 } // namespace polysynth
