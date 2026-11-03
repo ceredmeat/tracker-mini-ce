@@ -215,6 +215,12 @@ const strBitmap bitmaps[displayBitmapsCount] = {
 
 uint32_t ImageViewerJpegAddress = 350000;
 
+// tracker-mini-ce: the FT812 co-processor's reset counter and a forced reset (EVE_Layer.cpp)
+#ifdef PLATFORM_IMX
+extern volatile uint32_t eveCoProResetCount;
+void EVE_ForceCoProReset(void);
+#endif
+
 strGetProps getProps;
 cDisplay display;
 FileSystem::FileHandle imgFile;
@@ -395,6 +401,22 @@ void cDisplay::update()
 
         if (!displayDriver->isCoProEmpty())
             return;
+
+#ifdef PLATFORM_IMX
+        // tracker-mini-ce: the co-processor was reset during the load (decoder fault):
+        // stop feeding it JPEG data, which it would now read as commands
+        if ((img.status == 1 || img.status == 2) && eveCoProResetCount != img.resetMark)
+        {
+            if (img.status == 1)
+            {
+                fileSystem->closeFile(imgFile, false);
+            }
+            img.status = 4; // failed
+            img.loadProgress = 0;
+            loadImage = 0;
+            return;
+        }
+#endif
 
         if (img.status == 1)
         {
@@ -989,6 +1011,38 @@ bool cDisplay::isControlsRefreshProcessIdle()
 //=====================================================================================================
 // jpg/png
 //=====================================================================================================
+int cDisplay::highestUsedControlSlot()
+{
+    for (int i = controlsCount - 1; i >= 0; i--)
+    {
+        if (controlsTable[i] != nullptr)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void cDisplay::abortImageLoad()
+{
+    if (img.status != 1 && img.status != 2)
+    {
+        return;
+    }
+    FileSystem* fileSystem = TrackerImpl::getInstance()->getPlatform()->getFileSystem();
+    if (img.status == 1)
+    {
+        fileSystem->closeFile(imgFile, false);
+    }
+#ifdef PLATFORM_IMX
+    // the decoder may be waiting for data that won't come: restart the co-processor
+    EVE_ForceCoProReset();
+#endif
+    img.status = 4; // failed
+    img.loadProgress = 0;
+    loadImage = 0;
+}
+
 uint8_t cDisplay::readImgFromSd(char* path, uint32_t address, int16_t max_w, int16_t max_h)
 {
     FileSystem* fileSystem = TrackerImpl::getInstance()->getPlatform()->getFileSystem();
@@ -1059,6 +1113,9 @@ uint8_t cDisplay::readImgFromSd(char* path, uint32_t address, int16_t max_w, int
     img.loadProgress = 0;
     img.progressMax = img.size / imgBufforSize;
     img.status = 1;
+#ifdef PLATFORM_IMX
+    img.resetMark = eveCoProResetCount;
+#endif
 
     loadImage = 1;
 

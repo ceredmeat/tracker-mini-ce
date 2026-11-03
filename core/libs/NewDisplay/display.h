@@ -123,6 +123,11 @@ class cDisplay
     void readImgFromMemory(uint8_t* data, uint32_t size);
     uint8_t isImgLoaded() { return img.status == 3; }
     uint8_t getImgLoadState() { return img.status; }
+    // tracker-mini-ce: stop a picture load (resets the FT812 co-processor if it is busy with it)
+    void abortImageLoad();
+    // tracker-mini-ce: the highest control slot in use (its display list sits at
+    // controlsRamStartAddress + slot * controlsRamAddressStep), -1 if none
+    int highestUsedControlSlot();
 
     void scheduleScreenShot(int timeSec);
     void doScreenShot();
@@ -229,6 +234,7 @@ class cDisplay
         uint32_t size;
 
         uint32_t address;
+        uint32_t resetMark = 0; // tracker-mini-ce: co-processor resets seen when the load began
 
     } img;
 
