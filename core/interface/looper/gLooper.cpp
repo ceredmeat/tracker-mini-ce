@@ -1235,15 +1235,23 @@ static void paintConfig()
     char v[96];
     text(40, 24, 2, 0, "Settings", kWhite);
     snprintf(v, sizeof(v), "%.1f ms", engine.cfg.latency * 1000.0f / kSampleRate);
-    listRow(40, 70, 500, "Recording latency", v, L.cfgRow == 0);
-    listRow(40, 104, 500, "Show the stats", L.showStats ? "On" : "Off", L.cfgRow == 1);
+    listRow(40, 64, 330, "Recording latency", v, L.cfgRow == 0);
+    listRow(40, 94, 330, "Show the stats", L.showStats ? "On" : "Off", L.cfgRow == 1);
+    text(430, 24, 2, 0, "Fn keys here", kWhite);
+    static const char* const keys[8] = {"Fn1", "Fn2", "Fn3", "Fn4", "Shift + Fn1", "Shift + Fn2", "Shift + Fn3", "Shift + Fn4"};
+    for (int i = 0; i < 8; i++)
+        listRow(430, 64 + i * 30, 330, keys[i], cLooper::kFnActionNames[L.fnBinding[i] % cLooper::kFnActions],
+                L.cfgRow == 2 + i);
     const Track& t = engine.track[0];
     float st = (float)(t.memSamples / 2) / kSampleRate;
     snprintf(v, sizeof(v), "Recording time per track: %.1f s stereo, %.1f s mono", st, st * 2);
-    text(40, 170, 0, 0, v, kGrey);
-    text(40, 200, 0, 0, "Undo keeps loops up to half of that.", kDim);
-    text(40, 240, 0, 0, "Recording latency moves takes and overdubs back by the codec's", kDim);
-    text(40, 262, 0, 0, "round trip, so layers land where they were played.", kDim);
+    text(40, 150, 0, 0, v, kGrey);
+    text(40, 176, 4, 0, "Undo keeps loops up to half of that.", kDim);
+    text(40, 206, 4, 0, "Recording latency moves takes and overdubs back by", kDim);
+    text(40, 224, 4, 0, "the codec's round trip, so layers land where played.", kDim);
+    text(40, 260, 4, 0, "The Fn keys use these bindings on the Looper's screen", kDim);
+    text(40, 278, 4, 0, "and the tracker's own (Config) everywhere else.", kDim);
+    text(40, 296, 4, 0, "Saved on the card in /Looper/keys.cfg.", kDim);
 }
 
 static void paintFile()
@@ -1339,9 +1347,11 @@ static const char* const kManual[8][9] = {
      "length in bars. Start: now, count-in or on sound (hold and turn:", "the threshold). After rec: play, overdub or stop.",
      "Tempo: Tape (pitch follows) or Stretch (keeps its pitch).", "Input page: channels per track, monitoring, overdub feedback,",
      "and the tempo card: metronome, click, count-in, stop fade.", "Encoder push: tap tempo.", ""},
-    {"Leaving", "Menu opens the Mini's module menu: the tracker carries on",
-     "and the loops keep playing under it.", "Projects: File (Shift + Fn3). Settings: Config (Shift + Fn4).", "This manual: Song (Shift + Fn1). Input: Sample Play (Fn3).",
-     "Pattern (Fn1): back to the loops. (Fn keys as bound in Config.)", "", "", ""},
+    {"Fn keys and leaving", "The Fn keys have their own bindings here (Settings, Shift + Fn4):",
+     "Fn1 Loops, Fn2 Mixer, Fn3 FX 1, Fn4 Perform; Shift: Editor, FX 2,",
+     "Projects, Settings. Also: Input, Manual, Mode bar, Undo, Tap tempo,",
+     "Metronome, Play/stop all, Tracker. Elsewhere they keep the tracker's.",
+     "Menu opens the Mini's module menu: the tracker carries on", "and the loops keep playing under it.", "", ""},
 };
 
 static void paintManual()
