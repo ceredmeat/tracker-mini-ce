@@ -13,10 +13,11 @@
 // PHASE: a phase distortion synth after the Casio CZ series (two DCOs with 8 shapes,
 //   alternating pairs, ring and noise mod; DCW, DCA and DCO envelopes; LFOs; matrix).
 
-#include "CeSynthVoices.h"
 #include "config.h"
 
 #ifdef FEATURE_SYNTH
+
+#include "CeSynthVoices.h"
 
 #include "PolySynth/sdk/SynthVoiceSDK.h"
 #include "ceSynths/ceSynths.h"
