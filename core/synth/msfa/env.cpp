@@ -56,6 +56,19 @@ int32_t Env::getsample() {
   return level_;
 }
 
+// tracker-mini-ce
+void Env::update(const int r[4], const int l[4], int ol, int rate_scaling) {
+  for (int i = 0; i < 4; i++) {
+    rates_[i] = r[i];
+    levels_[i] = l[i];
+  }
+  outlevel_ = ol;
+  rate_scaling_ = rate_scaling;
+  if (ix_ < 4) {
+    advance(ix_);
+  }
+}
+
 void Env::keydown(bool d) {
   if (down_ != d) {
     down_ = d;
