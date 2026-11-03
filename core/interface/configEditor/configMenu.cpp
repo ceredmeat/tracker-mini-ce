@@ -144,6 +144,15 @@ const strItemTypeListTextWithAction setupBackupSamples{ &ceExtra::at(ceExtra::kB
 cMenuItem melBackupKeep(menuProject, "Auto backup", backupKeepDesc, menuTypeItemListTextWithAction, &setupBackupKeep);
 cMenuItem melBackupSamples(menuProject, "Backup samples", backupSamplesDesc, menuTypeItemListTextWithAction, &setupBackupSamples);
 #endif
+#ifdef PLATFORM_IMX
+// tracker-mini-ce: DJ Filter resonance (stored in the project, see ceModsExtra.h)
+static const char* const djResonanceTexts[3] = { "Low", "Mid", "High" };
+static const char djResonanceDesc[] = { "How much the DJ Filter (Global Mixer 3/3, slot 8) "
+                                        "rings at its cutoff." };
+static void setDjResonance() { newFileManager.setProjectStructChanged(); }
+const strItemTypeListTextWithAction setupDjResonance{ &ceExtra::at(ceExtra::kDjResonance), 3, djResonanceTexts, setDjResonance };
+cMenuItem melDjResonance(menuProject, "DJ filter res.", djResonanceDesc, menuTypeItemListTextWithAction, &setupDjResonance);
+#endif
 
 // general
 const strItemTypeListTextWithAction setupRadioRegion{ &mtConfig.general.radioRegion, 4, radioRegion, setRadioRegion };

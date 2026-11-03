@@ -213,6 +213,15 @@ class cMasterParams : public ModuleBase
 #ifdef FEATURE_SYNTH
     bool synthGainIsEdited[kSynthParts];
 #endif
+#ifdef PLATFORM_IMX
+    // tracker-mini-ce: the DJ Filter in slot 8 of Global Mixer 3/3
+    static constexpr uint8_t djFilterScreenPosition = 7;
+    bool djIsEdited = false;
+    bool djChanged = false;
+    char djLabel[12];
+    void changeDjFilter(int16_t value);
+    void showDjFilter();
+#endif
 
     // menu
 
