@@ -2,12 +2,16 @@
 
 #include "lp_engine.h"
 
+#include <new>
 #include <string.h>
 
 namespace lp
 {
 
-LP_FAST_BSS Engine engine;
+alignas(8) LP_NOINIT static uint8_t s_engineMem[sizeof(Engine)];
+Engine& engine = *reinterpret_cast<Engine*>(s_engineMem);
+
+void constructEngine() { new (s_engineMem) Engine(); }
 
 static const char* const kModeNames[kModeCount] = {"Forward",   "Reverse",   "Ping-pong", "Half speed",
                                                    "Double",    "Half rev",  "Double rev", "Half time",
@@ -58,6 +62,34 @@ static inline pos_t wrapP(pos_t v, pos_t L)
 void Engine::init(int16_t* pool, uint32_t poolBytes)
 {
     uint8_t* p = (uint8_t*)pool;
+    // work buffers and undo maps first
+    auto take = [&](uint32_t bytes) {
+        uint8_t* r = p;
+        p += (bytes + 15) & ~15u;
+        poolBytes -= (bytes + 15) & ~15u;
+        memset(r, 0, bytes);
+        return r;
+    };
+    const uint32_t blk = kBlock * sizeof(float);
+    inL_ = (float*)take(blk);
+    inR_ = (float*)take(blk);
+    mixL_ = (float*)take(blk);
+    mixR_ = (float*)take(blk);
+    tL_ = (float*)take(blk);
+    tR_ = (float*)take(blk);
+    for (int s = 0; s < kFxSlots; s++)
+    {
+        sendL_[s] = (float*)take(blk);
+        sendR_[s] = (float*)take(blk);
+        fxL_[s] = (float*)take(blk);
+        fxR_[s] = (float*)take(blk);
+    }
+    centers_ = (pos_t*)take(kBlock * sizeof(pos_t));
+    preRoll_[0] = (float*)take(kPreRoll * sizeof(float));
+    preRoll_[1] = (float*)take(kPreRoll * sizeof(float));
+    for (int t = 0; t < kTracks; t++)
+        track[t].dirty = take(kMaxUndoChunks / 8);
+
     uint32_t fxBytes = 1024u * 1024u;
     uint32_t clipBytes = poolBytes / 12;
     clipBytes &= ~3u;
@@ -88,7 +120,6 @@ void Engine::init(int16_t* pool, uint32_t poolBytes)
         memcpy(tr.perfKnob, defKnob, sizeof(defKnob));
         trimUndo_[t] = false;
     }
-    memset(preRoll_, 0, sizeof(preRoll_));
     setBpm(cfg.bpm);
 }
 
@@ -953,7 +984,7 @@ void Engine::renderTrack(int ti, const float* inL, const float* inR, float* outL
                     !t.repOn && !t.tapeOn && !vib && t.swapCursor < 0;
     float fb = (t.state == TrackState::kReplace) ? 0.0f : cfg.feedback * 0.01f;
 
-    static LP_FAST_BSS pos_t centers[kBlock];
+    pos_t* centers = centers_;
     bool wrote = false;
     pos_t L = (pos_t)t.len << kFrac;
 
@@ -1258,7 +1289,8 @@ void Engine::process(const int16_t* inL16, const int16_t* inR16, int16_t* outL16
     }
 
     // input
-    static LP_FAST_BSS float inL[kBlock], inR[kBlock];
+    float* inL = inL_;
+    float* inR = inR_;
     float ig = cfg.inputGain <= 50 ? (cfg.inputGain / 50.0f) * (cfg.inputGain / 50.0f) : 1.0f + (cfg.inputGain - 50) * 0.06f;
     float peak = 0;
     for (int i = 0; i < kBlock; i++)
@@ -1329,9 +1361,12 @@ void Engine::process(const int16_t* inL16, const int16_t* inR16, int16_t* outL16
     }
 
     // tracks
-    static LP_FAST_BSS float mixL[kBlock], mixR[kBlock];
-    static LP_FAST_BSS float sendL[kFxSlots][kBlock], sendR[kFxSlots][kBlock];
-    static LP_FAST_BSS float tL[kBlock], tR[kBlock];
+    float* mixL = mixL_;
+    float* mixR = mixR_;
+    float** sendL = sendL_;
+    float** sendR = sendR_;
+    float* tL = tL_;
+    float* tR = tR_;
     for (int i = 0; i < kBlock; i++)
     {
         mixL[i] = mixR[i] = 0;
@@ -1379,7 +1414,8 @@ void Engine::process(const int16_t* inL16, const int16_t* inR16, int16_t* outL16
     }
 
     // send effects, with the chain between them (one way at a time)
-    static LP_FAST_BSS float fxL[kFxSlots][kBlock], fxR[kFxSlots][kBlock];
+    float** fxL = fxL_;
+    float** fxR = fxR_;
     float barFrames = (float)(barLen_ >> kFrac) / (tempoPct_ * 0.01f);
     int first = 0, second = 1;
     float chain = chainSend[0] * 0.01f;

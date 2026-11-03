@@ -189,13 +189,16 @@ void cLooper::newProjectName()
     }
 }
 
+static __NOINIT(EXTERNAL_RAM) char s_projectList[16][24];
+
 void cLooper::scanProjects()
 {
+    projectList = s_projectList;
     projectCount = 0;
     FileSystem* f = fs();
     if (!f->exists(kProjects)) return;
-    static __BSS(SRAM_OC) char names[16 * 24];
-    static __BSS(SRAM_OC) char* list[16];
+    static __NOINIT(EXTERNAL_RAM) char names[16 * 24];
+    static __NOINIT(EXTERNAL_RAM) char* list[16];
     int count = 0;
     f->listDirContents(kProjects, FileSystem::kFolders, [](const char*) { return true; }, names, sizeof(names), 23, count,
                        list);

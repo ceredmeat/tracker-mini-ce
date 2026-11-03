@@ -10,9 +10,11 @@
 
 #if defined(PLATFORM_IMX)
 #include "cr_section_macros.h"
-#define LP_FAST_BSS __BSS(SRAM_OC)   // the tightly-coupled RAM is full; the on-chip RAM has room
+// the on-chip RAMs are full; the looper keeps 64 KB of SDRAM for its objects. The SDRAM is
+// set up during boot, after static initialisation: no zeroing, no constructors there.
+#define LP_NOINIT __NOINIT(EXTERNAL_RAM)
 #else
-#define LP_FAST_BSS
+#define LP_NOINIT
 #endif
 
 namespace lp

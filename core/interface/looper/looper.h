@@ -99,7 +99,7 @@ class cLooper : public ModuleBase
     char projectName[24];
     uint8_t projectIdx = 0;
     uint8_t projectCount = 0;
-    char projectList[16][24];
+    char (*projectList)[24] = nullptr;   // 16 names, in the SDRAM
 
     // waveform cache
     uint32_t laneVersion[lp::kTracks];

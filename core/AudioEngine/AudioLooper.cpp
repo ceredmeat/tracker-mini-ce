@@ -4,7 +4,8 @@
 
 #include "ceLooper/lp_engine.h"
 
-__attribute__((section(".sample_memory"), used)) static int16_t looperPool[kLooperPoolBytes / 2];
+// 64 KB less than the sample memory gave up: room in the SDRAM for the engine and screen objects
+__attribute__((section(".sample_memory"), used)) static int16_t looperPool[(kLooperPoolBytes - 65536) / 2];
 
 volatile bool AudioLooper::screenOpen = false;
 static bool looperReady = false;
@@ -22,6 +23,7 @@ AudioLooper::AudioLooper()
 void AudioLooper::begin()
 {
     if (looperReady) return;
+    lp::constructEngine();
     lp::engine.init(looperPool, sizeof(looperPool) - kUiScratchBytes);
     looperReady = true;
 }

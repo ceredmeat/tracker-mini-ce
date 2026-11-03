@@ -16,7 +16,7 @@
 
 using namespace lp;
 
-__BSS(SRAM_OC) cLooper looper;   // the tightly-coupled RAM is nearly full
+cLooper looper;
 static cLooper* LP = &looper;
 
 static void functFKey(uint8_t button, uint8_t state);

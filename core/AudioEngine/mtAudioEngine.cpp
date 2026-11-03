@@ -226,7 +226,6 @@ void audioEngine::init(Platform* platform, [[maybe_unused]] Synth* synth)
 #ifdef CE_LOOPER
     finalMixer[AudioOutput::OutputChannels::kLeft]->gain(AudioOutput::FinalMixInputs::kLooper, 1.0f);
     finalMixer[AudioOutput::OutputChannels::kRight]->gain(AudioOutput::FinalMixInputs::kLooper, 1.0f);
-    AudioLooper::begin();
 #endif
     finalMixer[AudioOutput::OutputChannels::kLeft]->gain(
       AudioOutput::FinalMixInputs::kNesEmulatorSound, 0.0f);

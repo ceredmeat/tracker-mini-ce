@@ -25,7 +25,7 @@ constexpr int kFxSlots = 2;
 constexpr int kPerfFx = 8;
 constexpr int kMaxGrains = 8;
 constexpr int kUndoChunk = 2048;           // frames per copy-on-write chunk
-constexpr int kMaxUndoChunks = 8192;       // up to 16 M frames
+constexpr int kMaxUndoChunks = 4096;       // up to 8 M frames
 constexpr int kLoopXfade = 220;            // 5 ms loop-point blend
 constexpr int kPunchRamp = 88;             // 2 ms punch / fade-in ramp
 constexpr int kJumpXfade = 132;            // 3 ms click-free jumps
@@ -147,7 +147,7 @@ struct Track
     float fadeStep = 0;
 
     // undo (copy-on-write chunks kept in the upper half of the memory)
-    uint8_t dirty[kMaxUndoChunks / 8];
+    uint8_t* dirty = nullptr;    // kMaxUndoChunks / 8 bytes, in the pool
     bool undoAvail = false, undone = false;
     int swapCursor = -1;         // >= 0 while an undo / redo swap is running
 
@@ -339,7 +339,7 @@ class Engine
 
     // input
     float inLevel_ = 0;
-    float preRoll_[2][kPreRoll];
+    float* preRoll_[2] = {nullptr, nullptr};
     int preIdx_ = 0;
 
     // fx memory and clipboard
@@ -352,12 +352,27 @@ class Engine
     pos_t trimUndoAnchor_[kTracks];
     bool trimUndo_[kTracks];
 
+    // per-block work buffers, in the pool (the on-chip RAM is full)
+    float* inL_ = nullptr;
+    float* inR_ = nullptr;
+    float* mixL_ = nullptr;
+    float* mixR_ = nullptr;
+    float* sendL_[kFxSlots];
+    float* sendR_[kFxSlots];
+    float* tL_ = nullptr;
+    float* tR_ = nullptr;
+    float* fxL_[kFxSlots];
+    float* fxR_[kFxSlots];
+    pos_t* centers_ = nullptr;
+
     float retMeter_[kFxSlots] = {0, 0};
     float masterMeter_[2] = {0, 0};
     volatile uint32_t blocks_ = 0;
 };
 
-extern Engine engine;
+// lives in the SDRAM; constructEngine() builds it once the SDRAM is up
+extern Engine& engine;
+void constructEngine();
 
 } // namespace lp
 

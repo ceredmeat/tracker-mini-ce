@@ -211,7 +211,7 @@ static void barLines(int x0, int w, int yTop, int yBot, uint32_t span, pos_t anc
     pos_t firstBar = a ? bar - a : 0;
     int barNo = (int)((anchor + firstBar) / bar);
     API_LINE_WIDTH(16);
-    if (beatPx >= 6.0f)
+    if (beatPx >= 6.0f && !looper.perform)
     {
         API_COLOR(kBeatLine);
         API_BEGIN(LINES);
@@ -219,7 +219,7 @@ static void barLines(int x0, int w, int yTop, int yBot, uint32_t span, pos_t anc
         if (b0 < 0) b0 += beat;
         pos_t first = b0 ? beat - b0 : 0;
         int count = 0;
-        for (pos_t p = first; (p >> kFrac) < span && count < 96; p += beat, count++)
+        for (pos_t p = first; (p >> kFrac) < span && count < 48; p += beat, count++)
         {
             int x = x0 + (int)((p >> kFrac) * pxPerFrame);
             API_VERTEX2F(x, yTop);
@@ -232,7 +232,7 @@ static void barLines(int x0, int w, int yTop, int yBot, uint32_t span, pos_t anc
     API_COLOR(kBarLine);
     API_BEGIN(LINES);
     int count = 0;
-    for (pos_t p = firstBar; (p >> kFrac) < span && count < 64; p += bar, count++)
+    for (pos_t p = firstBar; (p >> kFrac) < span && count < 32; p += bar, count++)
     {
         int x = x0 + (int)((p >> kFrac) * pxPerFrame);
         API_VERTEX2F(x, yTop);
@@ -1216,7 +1216,7 @@ static void paintConfig()
 static void paintFile()
 {
     cLooper& L = looper;
-    char v[64];
+    char v[200];
     snprintf(v, sizeof(v), "Project: %s", L.projectName);
     text(40, 24, 2, 0, v, kWhite);
     text(40, 52, 4, 0, "Projects are saved in /Looper/Projects (every loop as a WAV plus the settings).", kDim);
