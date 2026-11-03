@@ -41,6 +41,10 @@ void InstrumentTypeRegistry::registerInstrumentTypes(
     // tracker-mini-ce: OpenTracker engines (MIT, Marcin Spoczynski)
     registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtFm4Synth), createOtFm4Synth());
     registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtJu6Synth), createOtJu6Synth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtDtypeSynth), createOtDtypeSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtAtypeSynth), createOtAtypeSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtCstypeSynth), createOtCstypeSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtTtypeSynth), createOtTtypeSynth());
 }
 
 } // namespace polysynth

@@ -11,4 +11,8 @@ namespace polysynth
 {
 std::unique_ptr<InstrumentType> createOtFm4Synth();
 std::unique_ptr<InstrumentType> createOtJu6Synth();
+std::unique_ptr<InstrumentType> createOtDtypeSynth();
+std::unique_ptr<InstrumentType> createOtAtypeSynth();
+std::unique_ptr<InstrumentType> createOtCstypeSynth();
+std::unique_ptr<InstrumentType> createOtTtypeSynth();
 } // namespace polysynth

@@ -38,11 +38,31 @@ namespace ju6
 {
 ISynthEngine* engine();
 }
+namespace dtype
+{
+ISynthEngine* engine();
+}
+namespace atype
+{
+ISynthEngine* engine();
+}
+namespace cstype
+{
+ISynthEngine* engine();
+}
+namespace ttype
+{
+ISynthEngine* engine();
+}
 } // namespace audio
 namespace mod
 {
 extern const SynthDescriptor kFm4Descriptor;
 extern const SynthDescriptor kJu6Descriptor;
+extern const SynthDescriptor kDtypeDescriptor;
+extern const SynthDescriptor kAtypeDescriptor;
+extern const SynthDescriptor kCstypeDescriptor;
+extern const SynthDescriptor kTtypeDescriptor;
 } // namespace mod
 } // namespace ot
 
@@ -65,6 +85,10 @@ struct OtEngineDef
 const OtEngineDef kOtEngines[] = {
     { &ot::audio::fm4::engine, &ot::mod::kFm4Descriptor, InstrumentTypeId::kOtFm4Synth, "FM4" },
     { &ot::audio::ju6::engine, &ot::mod::kJu6Descriptor, InstrumentTypeId::kOtJu6Synth, "JU6" },
+    { &ot::audio::dtype::engine, &ot::mod::kDtypeDescriptor, InstrumentTypeId::kOtDtypeSynth, "D-Type" },
+    { &ot::audio::atype::engine, &ot::mod::kAtypeDescriptor, InstrumentTypeId::kOtAtypeSynth, "A-Type" },
+    { &ot::audio::cstype::engine, &ot::mod::kCstypeDescriptor, InstrumentTypeId::kOtCstypeSynth, "CS-Type" },
+    { &ot::audio::ttype::engine, &ot::mod::kTtypeDescriptor, InstrumentTypeId::kOtTtypeSynth, "T-Type" },
 };
 constexpr int kOtEngineCount = static_cast<int>(std::size(kOtEngines));
 
@@ -420,6 +444,10 @@ std::unique_ptr<InstrumentType> makeOtType()
 
 std::unique_ptr<InstrumentType> createOtFm4Synth() { return makeOtType<0>(); }
 std::unique_ptr<InstrumentType> createOtJu6Synth() { return makeOtType<1>(); }
+std::unique_ptr<InstrumentType> createOtDtypeSynth() { return makeOtType<2>(); }
+std::unique_ptr<InstrumentType> createOtAtypeSynth() { return makeOtType<3>(); }
+std::unique_ptr<InstrumentType> createOtCstypeSynth() { return makeOtType<4>(); }
+std::unique_ptr<InstrumentType> createOtTtypeSynth() { return makeOtType<5>(); }
 
 } // namespace polysynth
 

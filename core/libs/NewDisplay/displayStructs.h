@@ -88,6 +88,14 @@ enum enDisplayBitmaps
     kBitmapFM4,
     kBitmapMiniJU6,
     kBitmapJU6,
+    kBitmapMiniDTYPE,
+    kBitmapDTYPE,
+    kBitmapMiniATYPE,
+    kBitmapATYPE,
+    kBitmapMiniCSTYPE,
+    kBitmapCSTYPE,
+    kBitmapMiniTTYPE,
+    kBitmapTTYPE,
 
 #endif
 

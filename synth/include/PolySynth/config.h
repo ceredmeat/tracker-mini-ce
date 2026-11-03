@@ -44,7 +44,11 @@ enum class InstrumentTypeId
     kPhaseSynth, // tracker-mini-ce: PHASE
     kOtFm4Synth, // tracker-mini-ce: OpenTracker FM4
     kOtJu6Synth, // tracker-mini-ce: OpenTracker JU6
-    kLastSynth = kOtJu6Synth,
+    kOtDtypeSynth,
+    kOtAtypeSynth,
+    kOtCstypeSynth,
+    kOtTtypeSynth,
+    kLastSynth = kOtTtypeSynth,
     kDelay = 1000,
     kReverb,
 };

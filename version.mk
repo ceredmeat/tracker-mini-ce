@@ -1,6 +1,6 @@
 # Polyend Tracker Community Edition (CE) Centralized Version Configuration
 
-EDITION_NAME := CE-ot1
+EDITION_NAME := CE-ot2
 VER_ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 BUILD_TAG    ?= $(shell git -C "$(VER_ROOT_DIR)" rev-parse --short=7 HEAD 2>/dev/null || date +"%Y%m%d")
 

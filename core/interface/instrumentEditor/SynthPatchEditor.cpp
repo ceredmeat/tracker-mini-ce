@@ -20,7 +20,11 @@ static const int synthModelListImages[Synth::kSynthTypes.size()] = {
     enDisplayBitmaps::kBitmapACD,  enDisplayBitmaps::kBitmapFAT,  enDisplayBitmaps::kBitmapVAP,
     enDisplayBitmaps::kBitmapWTFM, enDisplayBitmaps::kBitmapPERC, enDisplayBitmaps::kBitmapDIRT, enDisplayBitmaps::kBitmapCHIP,
     enDisplayBitmaps::kBitmapWAVE, enDisplayBitmaps::kBitmapPHASE,
-    enDisplayBitmaps::kBitmapFM4, enDisplayBitmaps::kBitmapJU6
+    enDisplayBitmaps::kBitmapFM4, enDisplayBitmaps::kBitmapJU6,
+    enDisplayBitmaps::kBitmapDTYPE,
+    enDisplayBitmaps::kBitmapATYPE,
+    enDisplayBitmaps::kBitmapCSTYPE,
+    enDisplayBitmaps::kBitmapTTYPE,
 };
 
 static cInstrumentEditor* IE = &instrumentEditor;

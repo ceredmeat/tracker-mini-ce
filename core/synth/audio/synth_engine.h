@@ -61,6 +61,7 @@ struct SynthVoice
     float level = 0.0f;     // the voice's loudness, for stealing
     float bend = 0.0f;      // semitones at the block's end
     float bendStart = 0.0f; // ... and start
+    bool fading = false;    // the host is fading the voice out (stolen)
     template<class T> T& as() { return *reinterpret_cast<T*>(state); }
     template<class T> const T& as() const { return *reinterpret_cast<const T*>(state); }
 };

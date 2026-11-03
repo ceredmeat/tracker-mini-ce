@@ -83,6 +83,14 @@
 #include "images/fm4_med_108x40_L2.h"
 #include "images/ju6_mini_nomark_80x28_L2.h"
 #include "images/ju6_med_108x40_L2.h"
+#include "images/dtype_mini_nomark_80x28_L2.h"
+#include "images/dtype_med_108x40_L2.h"
+#include "images/atype_mini_nomark_80x28_L2.h"
+#include "images/atype_med_108x40_L2.h"
+#include "images/cstype_mini_nomark_80x28_L2.h"
+#include "images/cstype_med_108x40_L2.h"
+#include "images/ttype_mini_nomark_80x28_L2.h"
+#include "images/ttype_med_108x40_L2.h"
 
 #endif
 
@@ -225,6 +233,14 @@ const strBitmap bitmaps[displayBitmapsCount] = {
     { fm4_med_108x40_L2, 132800, 1080, 108, 40, L2, 27 },
     { ju6_mini_nomark_80x28_L2, 133900, 560, 80, 28, L2, 20 },
     { ju6_med_108x40_L2, 134500, 1080, 108, 40, L2, 27 },
+    { dtype_mini_nomark_80x28_L2, 135600, 560, 80, 28, L2, 20 },
+    { dtype_med_108x40_L2, 136200, 1080, 108, 40, L2, 27 },
+    { atype_mini_nomark_80x28_L2, 137300, 560, 80, 28, L2, 20 },
+    { atype_med_108x40_L2, 137900, 1080, 108, 40, L2, 27 },
+    { cstype_mini_nomark_80x28_L2, 139000, 560, 80, 28, L2, 20 },
+    { cstype_med_108x40_L2, 139600, 1080, 108, 40, L2, 27 },
+    { ttype_mini_nomark_80x28_L2, 140700, 560, 80, 28, L2, 20 },
+    { ttype_med_108x40_L2, 141300, 1080, 108, 40, L2, 27 },
 
 #endif
 };

@@ -59,6 +59,7 @@ struct Section
 };
 
 constexpr uint8_t kSynthFlagNotePriority = 1;
+constexpr uint8_t kSynthFlagKitState = 2; // the slot scratch is a kit the voices share
 
 struct SynthDescriptor
 {
