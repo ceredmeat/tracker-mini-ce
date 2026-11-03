@@ -3,7 +3,12 @@
 
 InterfaceMenuPopup mtMenuPopup;
 
+#include "ceLooperConfig.h"
+#ifdef CE_LOOPER
+const uint8_t kMenuModulesCount = 12;
+#else
 const uint8_t kMenuModulesCount = 11;
+#endif
 const char* const kModuleNamesList[kMenuModulesCount] = { "Pattern",
                                                           "Instrument Parameters",
                                                           "Sample Playback",
@@ -14,7 +19,11 @@ const char* const kModuleNamesList[kMenuModulesCount] = { "Pattern",
                                                           "Config",
                                                           "Perform",
                                                           "Sample Editor",
-                                                          "Sample Recorder" };
+                                                          "Sample Recorder",
+#ifdef CE_LOOPER
+                                                          "Looper",
+#endif
+};
 
 #ifdef TRACKER_MINI
 
@@ -37,6 +46,9 @@ const InterfaceMenuPopup::ModuleRef InterfaceMenuPopup::modules[kMenuModulesCoun
     { mtInterface.modules[9], interfaceButtonPerformance, 0, &performModes },
     { mtInterface.modules[6], interfaceButtonSampleEdit, 0, nullptr },
     { mtInterface.modules[8], interfaceButtonSampleRec, 0, nullptr },
+#ifdef CE_LOOPER
+    { mtInterface.modules[11], interfaceButtonLooperVirtual, 0, nullptr },
+#endif
 
 };
 

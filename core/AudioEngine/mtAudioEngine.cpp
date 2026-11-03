@@ -149,6 +149,15 @@ audioEngine::audioEngine()
     connectMixerToExportQueue(&mixerAndFxs, &exportQueues);
     connectSpecialInputsToOutput(&output);
     connectOutputToExportQueue(&output, &exportQueues);
+#ifdef CE_LOOPER
+    // the looper: codec input in, its mix into the final mixer
+    connections.push_back(new AudioConnection(input.getI2sStream(), 0, &looper, 0));
+    connections.push_back(new AudioConnection(input.getI2sStream(), 1, &looper, 1));
+    connections.push_back(new AudioConnection(
+      &looper, 0, output.getFinalMixer(AudioOutput::kLeft), AudioOutput::FinalMixInputs::kLooper));
+    connections.push_back(new AudioConnection(
+      &looper, 1, output.getFinalMixer(AudioOutput::kRight), AudioOutput::FinalMixInputs::kLooper));
+#endif
 
     for (int channel = 0; channel < AudioOutput::kChannelsCount; channel++)
     {
@@ -176,7 +185,9 @@ void audioEngine::init(Platform* platform, [[maybe_unused]] Synth* synth)
     radio = platform->getRadio();
     usb = platform->getUsb();
 
-#ifdef PLATFORM_IMX
+#if defined(CE_LOOPER)
+    AudioMemory(86);
+#elif defined(PLATFORM_IMX)
     AudioMemory(80);
 #else
     AudioMemory(70);
@@ -212,6 +223,11 @@ void audioEngine::init(Platform* platform, [[maybe_unused]] Synth* synth)
         mixerAndFxs.getTracksMixer(MixerAndFxChannelType::kRight)->gain(channel, 1.0f);
     }
 
+#ifdef CE_LOOPER
+    finalMixer[AudioOutput::OutputChannels::kLeft]->gain(AudioOutput::FinalMixInputs::kLooper, 1.0f);
+    finalMixer[AudioOutput::OutputChannels::kRight]->gain(AudioOutput::FinalMixInputs::kLooper, 1.0f);
+    AudioLooper::begin();
+#endif
     finalMixer[AudioOutput::OutputChannels::kLeft]->gain(
       AudioOutput::FinalMixInputs::kNesEmulatorSound, 0.0f);
     finalMixer[AudioOutput::OutputChannels::kRight]->gain(
