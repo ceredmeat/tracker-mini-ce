@@ -8,6 +8,7 @@
 #include "performanceMode/performanceMode.h"
 
 #include "masterParams/masterParams.h"
+#include "ceInsert/ceDjFilter.h"
 #include "mtGainLevelLogarithmicTab.h"
 
 #include "Platform.h"
@@ -89,6 +90,9 @@ static void functSoloMuteDelayReverb(uint8_t state);
 static void functSelectSynth1(uint8_t state);
 static void functSelectSynth2(uint8_t state);
 static void functSelectSynth3(uint8_t state);
+#ifdef PLATFORM_IMX
+static void functDjFilter(uint8_t state);
+#endif
 #endif
 
 // MASTER EDIT FUNCTIONS
@@ -501,6 +505,9 @@ static void functEncoder(int16_t value)
             }
         }
 #endif
+#ifdef PLATFORM_IMX
+        if (MP->djIsEdited) MP->changeDjFilter(value);
+#endif
         return;
     }
 
@@ -739,6 +746,9 @@ static void functUp()
             }
         }
 #endif
+#ifdef PLATFORM_IMX
+        if (MP->djIsEdited) MP->changeDjFilter(1);
+#endif
 
         return;
     }
@@ -844,6 +854,9 @@ static void functDown()
             }
         }
 #endif
+#ifdef PLATFORM_IMX
+        if (MP->djIsEdited) MP->changeDjFilter(-1);
+#endif
         return;
     }
 
@@ -947,6 +960,14 @@ static void functDelete()
             {
                 MP->setDefaultSynthGain(synthIdx);
             }
+        }
+#endif
+#ifdef PLATFORM_IMX
+        if (MP->djIsEdited)
+        {
+            ceDj::setPosition(0);
+            MP->djChanged = true;
+            MP->showDjFilter();
         }
 #endif
         return;
@@ -1235,6 +1256,9 @@ void cMasterParams::switchToMixerDelayReverb()
     ip->setButtonObj(interfaceButton4, functSelectSynth1);
     ip->setButtonObj(interfaceButton5, functSelectSynth2);
     ip->setButtonObj(interfaceButton6, functSelectSynth3);
+#endif
+#ifdef PLATFORM_IMX
+    ip->setButtonObj(interfaceButton7, functDjFilter);
 #endif
     ip->setButtonObj(interfaceButtonShift, functSoloMuteDelayReverb);
 
@@ -2058,6 +2082,39 @@ static void functSelectSynth3(uint8_t state)
     {
         MP->synthGainIsEdited[2] = false;
     }
+}
+#endif
+
+#ifdef PLATFORM_IMX
+// tracker-mini-ce: DJ Filter. Hold slot 8 and turn (or + / -); tap it alone for Off.
+static void functDjFilter(uint8_t state)
+{
+    if (MP->displayType != cMasterParams::displayMode::mixerDelayReverb)
+    {
+        return;
+    }
+
+    if (state == buttonPress)
+    {
+        MP->djIsEdited = true;
+        MP->djChanged = false;
+    }
+    else if (state == buttonRelease)
+    {
+        MP->djIsEdited = false;
+        if (!MP->djChanged)
+        {
+            ceDj::setPosition(0);
+        }
+        MP->showDjFilter();
+    }
+}
+
+void cMasterParams::changeDjFilter(int16_t value)
+{
+    ceDj::setPosition(ceDj::position() + value * 2);
+    djChanged = true;
+    showDjFilter();
 }
 #endif
 

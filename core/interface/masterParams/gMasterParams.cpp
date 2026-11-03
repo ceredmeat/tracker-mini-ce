@@ -6,6 +6,7 @@
 #include "util_math.h"
 #include <cmath>
 #include <masterParams/masterParams.h>
+#include "ceInsert/ceDjFilter.h"
 
 static const uint16_t framesPlaces[8][4] = {
     { 0 + 1, 31, 800 / 8 - 3, 391 },
@@ -1577,6 +1578,20 @@ void cMasterParams::showMixerDelayReverbScreen()
         }
     }
 
+#ifdef PLATFORM_IMX
+    // tracker-mini-ce: DJ Filter in slot 8
+    if (displayType == displayMode::mixerDelayReverb)
+    {
+        snprintf(mixerLabel[djFilterScreenPosition], sizeof(mixerLabel[djFilterScreenPosition]), "Hold");
+        display.setControlText(trackNameLabel[djFilterScreenPosition], "DJ Filter");
+        display.setControlShow(trackNameLabel[djFilterScreenPosition]);
+        display.refreshControl(trackNameLabel[djFilterScreenPosition]);
+        display.setControlPosition(trackVolumeBar[djFilterScreenPosition], (800 / 8) * 7 + 2 + 800 / 32, 64);
+        display.setControlSize(trackVolumeBar[djFilterScreenPosition], 800 / 16 - 3, 359);
+        showDjFilter();
+    }
+#endif
+
     display.setControlColors(label[delayVolumeScreenPosition],
                              mtProject.values.delayMute ? display.getTheme().inactiveLabelsColors
                                                         : display.getTheme().activeLabelsColors);
@@ -1606,6 +1621,11 @@ void cMasterParams::showMixerDelayReverbScreen()
     resizeBarControl(displayMode::mixerDelayReverb);
 
     // empty space covers
+#if defined(PLATFORM_IMX) && defined(FEATURE_SYNTH)
+    // tracker-mini-ce: slot 8 holds the DJ Filter
+    display.setControlHide(blankSpaceCover[0]);
+    display.refreshControl(blankSpaceCover[0]);
+#else
 #ifdef FEATURE_SYNTH
     display.setControlPosition(blankSpaceCover[0], (800 / 8) * 7 + 2, -1);
     display.setControlSize(blankSpaceCover[0], (800 / 8) * 1 - 4, -1);
@@ -1615,6 +1635,7 @@ void cMasterParams::showMixerDelayReverbScreen()
 #endif
     display.setControlShow(blankSpaceCover[0]);
     display.refreshControl(blankSpaceCover[0]);
+#endif
 
     display.setControlHide(blankSpaceCover[1]);
     display.setControlHide(blankSpaceCover[2]);
@@ -1851,6 +1872,25 @@ void cMasterParams::showSynthGain(int synthIdx)
     display.setControlValue(trackVolumeBar[position],
                             map<int>(value, Synth::kGainSilence, Synth::kGainMax, 0, 100));
     display.refreshControl(trackVolumeBar[position]);
+}
+#endif
+
+#ifdef PLATFORM_IMX
+void cMasterParams::showDjFilter()
+{
+    const uint8_t pos = djFilterScreenPosition;
+    ceDj::label(djLabel, sizeof(djLabel));
+    display.setControlText(label[pos], djLabel);
+    display.setControlText2(label[pos], djIsEdited ? "+ / -" : "Hold");
+    display.setControlColors(label[pos],
+                             ceDj::position() == 0 ? display.getTheme().inactiveLabelsColors
+                                                   : display.getTheme().activeLabelsColors);
+    display.refreshControl(label[pos]);
+
+    // the bar: centre = Off, left half lowpass, right half highpass
+    display.setControlShow(trackVolumeBar[pos]);
+    display.setControlValue(trackVolumeBar[pos], 50 + ceDj::position());
+    display.refreshControl(trackVolumeBar[pos]);
 }
 #endif
 

@@ -3,6 +3,8 @@
 
 #include "configEditor/configMenuActions.h"
 #include "ThemeManager.h"
+#include "fileManager.h"
+#include "ceModsExtra.h"
 
 #include "imageViewer/imageViewerDefs.h"
 
@@ -19,11 +21,11 @@
 
 #ifdef TRACKER_MINI
 constexpr uint8_t baseMenuGroupCount = 8;
-constexpr uint8_t projectMenuGroupCount = 10;
+constexpr uint8_t projectMenuGroupCount = 11;
 constexpr uint8_t generalMenuGroupCount = 9;
 #elif defined(PLATFORM_IMX)
 constexpr uint8_t baseMenuGroupCount = 7;
-constexpr uint8_t projectMenuGroupCount = 10;
+constexpr uint8_t projectMenuGroupCount = 11;
 constexpr uint8_t generalMenuGroupCount = 12;
 #else
 constexpr uint8_t baseMenuGroupCount = 6;
@@ -82,6 +84,16 @@ cMenuItem melLimiterMode(menuProject, "Limiter mode", limiterDesc, menuTypeItemL
 cMenuItem melSendsMode(menuProject, "Sends mode", sendsDesc,  menuTypeItemListTextWithAction, &setupSendsMode);
 cMenuItem melHeadroomMode(menuProject, "Extra headroom", headroomDesc,  menuTypeItemListTextWithAction, &setupHeadroomMode);
 cMenuItem melSnapToZeroMode(menuProject, "Snap to zero", snapToZeroDesc,  menuTypeItemListTextWithAction, &setupSnapToZeroMode);
+
+#ifdef PLATFORM_IMX
+// tracker-mini-ce: DJ Filter resonance (stored in the project, see ceModsExtra.h)
+static const char* const djResonanceTexts[3] = { "Low", "Mid", "High" };
+static const char djResonanceDesc[] = { "How much the DJ Filter (Global Mixer 3/3, slot 8) "
+                                        "rings at its cutoff." };
+static void setDjResonance() { newFileManager.setProjectStructChanged(); }
+const strItemTypeListTextWithAction setupDjResonance{ &ceExtra::at(ceExtra::kDjResonance), 3, djResonanceTexts, setDjResonance };
+cMenuItem melDjResonance(menuProject, "DJ filter res.", djResonanceDesc, menuTypeItemListTextWithAction, &setupDjResonance);
+#endif
 
 // general
 const strItemTypeListTextWithAction setupRadioRegion{ &mtConfig.general.radioRegion, 4, radioRegion, setRadioRegion };
