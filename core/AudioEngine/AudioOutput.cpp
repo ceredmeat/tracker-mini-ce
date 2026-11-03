@@ -4,6 +4,9 @@ AudioOutput::AudioOutput()
 {
     constexpr int kLimiterSidechainChannelIdx = 1;
 
+    // tracker-mini-ce: stereo master effects (ceMasterInsert) run in the left limiter
+    limiter[OutputChannels::kLeft].setStereoPartner(&limiter[OutputChannels::kRight]);
+
 #ifndef PLATFORM_IMX
     connections.push_back(new AudioConnection(
       &limiterSidechainMux, 0, &limiter[OutputChannels::kLeft], kLimiterSidechainChannelIdx));

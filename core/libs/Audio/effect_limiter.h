@@ -27,6 +27,10 @@ class AudioEffectLimiter : public AudioStream
     void blockUpdate();
     void unblockUpdate();
 
+    // tracker-mini-ce: the left limiter takes the right one's block too, so stereo master
+    // effects (ceMasterInsert) see both channels of the same block before limiting
+    void setStereoPartner(AudioEffectLimiter* right);
+
   private:
     audio_block_t* inputQueueArray[2];
     int16_t inputStorageBuffer[LIMITER_DELAY];
@@ -44,6 +48,11 @@ class AudioEffectLimiter : public AudioStream
     bool isAverageGain;
     bool isSideChainEnable;
     bool isBlocked;
+
+    AudioEffectLimiter* partner = nullptr;
+    audio_block_t* heldBlock = nullptr;
+    bool isRightOfPair = false;
+    audio_block_t* takeInput();
 };
 
 #endif /* LIBS_AUDIO_EFFECT_LIMITER_H_ */

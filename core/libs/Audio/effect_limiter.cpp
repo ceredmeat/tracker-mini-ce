@@ -4,6 +4,8 @@
 #include "util_math.h"
 #include <cmath>
 
+#include "ceMasterInsert.h"
+
 int16_t zeroblock[AUDIO_BLOCK_SAMPLES];
 
 AUDIO_CORE_FLASH void AudioEffectLimiter::begin()
@@ -35,6 +37,34 @@ AUDIO_CORE_FLASH void AudioEffectLimiter::setRelease(float r)
         releaseTime = 1 - expf(-2.2f * (1000.0f / (44100.0f * r)));
     else if (mtProject.values.limiterMode == limiterModeHard)
         releaseTime = r / 1000.0f;
+}
+
+AUDIO_CORE_FLASH void AudioEffectLimiter::setStereoPartner(AudioEffectLimiter* right)
+{
+    partner = right;
+    right->isRightOfPair = true;
+}
+
+// tracker-mini-ce: the left limiter runs first in the audio update list (limiter[0] is built
+// before limiter[1]), so here both blocks of this cycle are waiting in their queues
+AUDIO_CORE_RAM audio_block_t* AudioEffectLimiter::takeInput()
+{
+    if (isRightOfPair)
+    {
+        audio_block_t* b = heldBlock;
+        heldBlock = nullptr;
+        return b != nullptr ? b : receiveWritable(0);
+    }
+
+    audio_block_t* b = receiveWritable(0);
+    if (partner != nullptr)
+    {
+        audio_block_t* r = partner->receiveWritable(0);
+        if (partner->heldBlock != nullptr) release(partner->heldBlock);
+        partner->heldBlock = r;
+        if (b != nullptr && r != nullptr) ceMasterInsert(b->data, r->data);
+    }
+    return b;
 }
 
 AUDIO_CORE_FLASH void AudioEffectLimiter::setSidechainEnable(bool isEnable)
@@ -72,7 +102,7 @@ AUDIO_CORE_RAM void AudioEffectLimiter::processSidechain()
     int16_t inputTemp;
     float localf;
 
-    inputBlock = receiveWritable(0);
+    inputBlock = takeInput();
     sidechainBlock = receiveReadOnly(1);
     if (!inputBlock)
     {
@@ -135,7 +165,7 @@ AUDIO_CORE_RAM void AudioEffectLimiter::processMainStream()
     int16_t inputTemp;
     float localf;
 
-    inputBlock = receiveWritable(0);
+    inputBlock = takeInput();
     sidechainBlock = receiveReadOnly(1);
     if (!inputBlock)
     {
