@@ -1,3 +1,4 @@
+#include "ceLooperConfig.h"
 #include "core/interface.h"
 #include "core/interfacePopups.h"
 
@@ -93,6 +94,10 @@ void Interface::padHold(uint8_t n)
 }
 
 //=======================================================================
+#ifdef CE_LOOPER
+bool looperFnKey(uint8_t slot, uint8_t state); // looper/fLooper.cpp
+#endif
+
 #ifdef TRACKER_MINI
 static void functMiniFn1(uint8_t state)
 {
@@ -101,6 +106,18 @@ static void functMiniFn1(uint8_t state)
         fnButtonShiftPressed[0] =
           mtInterface.getPlatform()->getButtons()->isButtonPressed(interfaceButtonShift);
     }
+
+#ifdef CE_LOOPER
+    // tracker-mini-ce: on the Looper's screen the Fn keys use the Looper's own bindings
+    if (looperFnKey(fnButtonShiftPressed[0] ? 4 : 0, state))
+    {
+        if (state == buttonRelease)
+        {
+            fnButtonShiftPressed[0] = false;
+        }
+        return;
+    }
+#endif
 
     if (fnButtonShiftPressed[0])
     {
@@ -127,6 +144,18 @@ static void functMiniFn2(uint8_t state)
           mtInterface.getPlatform()->getButtons()->isButtonPressed(interfaceButtonShift);
     }
 
+#ifdef CE_LOOPER
+    // tracker-mini-ce: on the Looper's screen the Fn keys use the Looper's own bindings
+    if (looperFnKey(fnButtonShiftPressed[1] ? 5 : 1, state))
+    {
+        if (state == buttonRelease)
+        {
+            fnButtonShiftPressed[1] = false;
+        }
+        return;
+    }
+#endif
+
     if (fnButtonShiftPressed[1])
     {
         mtInterface.ip->processButtonsInput(
@@ -152,6 +181,18 @@ static void functMiniFn3(uint8_t state)
           mtInterface.getPlatform()->getButtons()->isButtonPressed(interfaceButtonShift);
     }
 
+#ifdef CE_LOOPER
+    // tracker-mini-ce: on the Looper's screen the Fn keys use the Looper's own bindings
+    if (looperFnKey(fnButtonShiftPressed[2] ? 6 : 2, state))
+    {
+        if (state == buttonRelease)
+        {
+            fnButtonShiftPressed[2] = false;
+        }
+        return;
+    }
+#endif
+
     if (fnButtonShiftPressed[2])
     {
         mtInterface.ip->processButtonsInput(
@@ -176,6 +217,18 @@ static void functMiniFn4(uint8_t state)
         fnButtonShiftPressed[3] =
           mtInterface.getPlatform()->getButtons()->isButtonPressed(interfaceButtonShift);
     }
+
+#ifdef CE_LOOPER
+    // tracker-mini-ce: on the Looper's screen the Fn keys use the Looper's own bindings
+    if (looperFnKey(fnButtonShiftPressed[3] ? 7 : 3, state))
+    {
+        if (state == buttonRelease)
+        {
+            fnButtonShiftPressed[3] = false;
+        }
+        return;
+    }
+#endif
 
     if (fnButtonShiftPressed[3])
     {

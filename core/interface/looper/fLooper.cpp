@@ -38,6 +38,14 @@ static void functPageKey(uint8_t button, uint8_t state);
 
 static constexpr uint32_t kHoldMs = 300;
 
+const char* const cLooper::kFnActionNames[cLooper::kFnActions] = {
+    "Loops",    "Mixer",  "FX 1",      "FX 2",      "Perform",      "Editor",  "Input",   "Projects",
+    "Settings", "Manual", "Mode bar",  "Undo/redo", "Tap tempo",    "Metronome", "Play/stop all", "Tracker",
+};
+// Fn1 Loops, Fn2 Mixer, Fn3 FX 1, Fn4 Perform; Shift: Editor, FX 2, Projects, Settings
+const uint8_t cLooper::kFnDefaults[8] = {kFnLoops,  kFnMixer, kFnFx1,      kFnPerform,
+                                         kFnEditor, kFnFx2,   kFnProjects, kFnSettings};
+
 uint32_t cLooper::now() { return platform->getTimer()->millis(); }
 
 void cLooper::flash(const char* text)
@@ -63,6 +71,7 @@ void cLooper::start(uint32_t options)
         heldPad[t] = -1;
     }
     if (projectName[0] == 0) newProjectName();
+    if (!fnLoaded) loadFnKeys();
     edVersion = 0xffffffff;
     setFunctions();
     showPage(page);
@@ -113,9 +122,11 @@ void cLooper::setFunctions()
         interfaceButtonMaster,     interfaceButtonFx1,        interfaceButtonFx2,  interfaceButtonNote,
         interfaceButtonSampleEdit, interfaceButtonPerformance, interfaceButtonInstr, interfaceButtonParams,
         interfaceButtonPattern,    interfaceButtonConfig,      interfaceButtonFile, interfaceButtonSong,
-        interfaceButtonSampleLoad, interfaceButtonMiniFn1,     interfaceButtonMiniFn2, interfaceButtonMiniFn3,
-        interfaceButtonMiniFn4,    interfaceButtonSamplePlay,  interfaceButtonSampleRec,
+        interfaceButtonSampleLoad, interfaceButtonSamplePlay,  interfaceButtonSampleRec,
     };
+    // Not the Mini's Fn1-Fn4: they have handlers for the whole firmware, set once at boot,
+    // that press the module keys they are bound to (Pattern, Master, Song ...). Those reach
+    // the keys above. Taking them over here left them pointing at the Looper after it closed.
     for (uint8_t k : pageKeys)
         ip->setButtonObj(k, functPageKey);
 }
@@ -634,6 +645,14 @@ void cLooper::configChange(int row, int d)
     {
         case 0: engine.cfg.latency = (int16_t)clampi(engine.cfg.latency + d * 22, 0, 2205); break;   // 0.5 ms steps
         case 1: showStats = d > 0; break;
+        default:
+            if (row >= 2 && row <= 9)
+            {
+                int i = row - 2;
+                fnBinding[i] = (uint8_t)((fnBinding[i] + kFnActions + d) % kFnActions);
+                saveFnKeys();
+            }
+            break;
     }
 }
 
@@ -1048,7 +1067,7 @@ static void functUp(uint8_t state)
         case cLooper::kHome: LP->selectTrack(LP->sel - 1); break;
         case cLooper::kMixer: LP->mixRow = (uint8_t)clampi(LP->mixRow - 1, 0, 3); break;
         case cLooper::kInput: LP->inRow = (uint8_t)clampi(LP->inRow - 1, 0, 9); break;
-        case cLooper::kConfig: LP->cfgRow = (uint8_t)clampi(LP->cfgRow - 1, 0, 1); break;
+        case cLooper::kConfig: LP->cfgRow = (uint8_t)clampi(LP->cfgRow - 1, 0, 9); break;
         case cLooper::kFile: LP->fileRow = (uint8_t)clampi(LP->fileRow - 1, 0, 15); break;
         case cLooper::kEditor:
             LP->edTrack = (uint8_t)clampi(LP->edTrack - 1, 0, kTracks - 1);
@@ -1068,7 +1087,7 @@ static void functDown(uint8_t state)
         case cLooper::kHome: LP->selectTrack(LP->sel + 1); break;
         case cLooper::kMixer: LP->mixRow = (uint8_t)clampi(LP->mixRow + 1, 0, 3); break;
         case cLooper::kInput: LP->inRow = (uint8_t)clampi(LP->inRow + 1, 0, LP->inCol ? 9 : 3); break;
-        case cLooper::kConfig: LP->cfgRow = (uint8_t)clampi(LP->cfgRow + 1, 0, 1); break;
+        case cLooper::kConfig: LP->cfgRow = (uint8_t)clampi(LP->cfgRow + 1, 0, 9); break;
         case cLooper::kFile:
             if (LP->projectCount) LP->fileRow = (uint8_t)clampi(LP->fileRow + 1, 0, LP->projectCount - 1);
             break;
@@ -1162,8 +1181,7 @@ static void functPageKey(uint8_t button, uint8_t state)
     bool release = state == buttonRelease;
 
     // Perform (or Instr): tap latches, hold works while held
-    if (button == interfaceButtonPerformance || button == interfaceButtonInstr || button == interfaceButtonParams ||
-        (button == interfaceButtonMiniFn3 && !LP->shift))
+    if (button == interfaceButtonPerformance || button == interfaceButtonInstr || button == interfaceButtonParams)
     {
         if (press)
         {
@@ -1198,24 +1216,21 @@ static void functPageKey(uint8_t button, uint8_t state)
     }
     if (!press) return;
 
-    if (button == interfaceButtonMaster || (button == interfaceButtonMiniFn1 && !LP->shift))
+    if (button == interfaceButtonMaster)
     {
         LP->mixStrip = LP->sel;
         LP->showPage(cLooper::kMixer);
     }
-    else if (button == interfaceButtonFx1 || button == interfaceButtonFx2 || (button == interfaceButtonMiniFn2 && !LP->shift))
+    else if (button == interfaceButtonFx1 || button == interfaceButtonFx2)
     {
         if (button == interfaceButtonFx1)
             LP->fxSlot = 0;
         else if (button == interfaceButtonFx2)
             LP->fxSlot = 1;
-        else if (LP->page == cLooper::kFx)
-            LP->fxSlot ^= 1;
         LP->fxKnob = 1;
         LP->showPage(cLooper::kFx);
     }
-    else if (button == interfaceButtonNote || button == interfaceButtonSampleEdit ||
-             (button == interfaceButtonMiniFn4 && !LP->shift))
+    else if (button == interfaceButtonNote || button == interfaceButtonSampleEdit)
         LP->showPage(cLooper::kEditor);
     else if (button == interfaceButtonPattern)
     {
@@ -1227,16 +1242,95 @@ static void functPageKey(uint8_t button, uint8_t state)
         LP->bar = cLooper::kBarMain;
         LP->showPage(cLooper::kHome);
     }
-    else if (button == interfaceButtonConfig || (button == interfaceButtonMiniFn2 && LP->shift))
+    else if (button == interfaceButtonConfig)
         LP->showPage(cLooper::kConfig);
-    else if (button == interfaceButtonFile || button == interfaceButtonSampleLoad || (button == interfaceButtonMiniFn3 && LP->shift))
+    else if (button == interfaceButtonFile || button == interfaceButtonSampleLoad)
         LP->showPage(cLooper::kFile);
-    else if (button == interfaceButtonSong || (button == interfaceButtonMiniFn4 && LP->shift))
+    else if (button == interfaceButtonSong)
         LP->showPage(cLooper::kManual);
-    else if (button == interfaceButtonMiniFn1 && LP->shift)
-        LP->showPage(cLooper::kInput);
     else if (button == interfaceButtonSamplePlay || button == interfaceButtonSampleRec)
         LP->showPage(cLooper::kInput);
+}
+
+//==============================================================================
+// the Mini's Fn keys on the Looper's screen (called from the firmware-wide Fn handlers)
+
+void cLooper::fnAction(int a, bool press)
+{
+    uint8_t st = press ? buttonPress : buttonRelease;
+    switch (a)
+    {
+        case kFnPerform: functPageKey(interfaceButtonPerformance, st); return;   // tap latches, hold is momentary
+        case kFnLoops: functPageKey(interfaceButtonPattern, st); return;
+        case kFnMixer: functPageKey(interfaceButtonMaster, st); return;
+        case kFnFx1: functPageKey(interfaceButtonFx1, st); return;
+        case kFnFx2: functPageKey(interfaceButtonFx2, st); return;
+        case kFnEditor: functPageKey(interfaceButtonNote, st); return;
+        case kFnInput: functPageKey(interfaceButtonSamplePlay, st); return;
+        case kFnProjects: functPageKey(interfaceButtonFile, st); return;
+        case kFnSettings: functPageKey(interfaceButtonConfig, st); return;
+        case kFnManual: functPageKey(interfaceButtonSong, st); return;
+        default: break;
+    }
+    if (!press) return;
+    switch (a)
+    {
+        case kFnModes:
+            if (page != kHome) showPage(kHome);
+            bar = kBarModes;
+            modePage = engine.track[sel].mode >= kModeHalfTime ? 1 : 0;
+            break;
+        case kFnUndo:
+        {
+            Track& t = engine.track[sel];
+            if (t.undoAvail && !t.undone)
+            {
+                engine.undo(sel);
+                flash("Undo");
+            }
+            else if (t.undoAvail)
+            {
+                engine.redo(sel);
+                flash("Redo");
+            }
+            break;
+        }
+        case kFnTap: tapTempo(); break;
+        case kFnMetronome:
+            engine.cfg.metronome = !engine.cfg.metronome;
+            flash(engine.cfg.metronome ? "Metronome on" : "Metronome off");
+            break;
+        case kFnPlayAll:
+        {
+            bool anyPlaying = false;
+            for (int i = 0; i < kTracks; i++)
+                if (engine.track[i].state == TrackState::kPlaying) anyPlaying = true;
+            if (anyPlaying)
+            {
+                for (int i = 0; i < kTracks; i++)
+                    if (engine.track[i].state == TrackState::kPlaying) engine.pressPlay(i);
+            }
+            else
+                engine.playAll();
+            break;
+        }
+        case kFnTracker:
+        {
+            // the tracker's Pattern screen (in the looper-only firmware: stays here)
+            uint8_t b = interfaceButtonPattern;
+            eventFunct(eventSwitchModule, this, &b, nullptr);
+            return;
+        }
+        default: break;
+    }
+    refreshKeys();
+}
+
+bool looperFnKey(uint8_t slot, uint8_t state)
+{
+    if (!LP->moduleRefresh || slot > 7 || mtMenuPopup.isPopupVisible()) return false;
+    if (state == buttonPress || state == buttonRelease) LP->fnAction(LP->fnBinding[slot], state == buttonPress);
+    return true;
 }
 
 #endif

@@ -113,6 +113,36 @@ class cLooper : public ModuleBase
     hControl bgCtl = -1, laneCtl[lp::kTracks] = {-1, -1, -1, -1}, keysCtl = -1, overlayCtl = -1;
     cLooperView::Painter bgPainter, lanePainter[lp::kTracks], keysPainter, overlayPainter;
 
+    // the Mini's Fn keys on the Looper's screen: their own bindings (Fn1-4, Shift + Fn1-4),
+    // saved in /Looper/keys.cfg; the tracker's bindings are untouched
+    enum FnAction : uint8_t
+    {
+        kFnLoops,
+        kFnMixer,
+        kFnFx1,
+        kFnFx2,
+        kFnPerform,
+        kFnEditor,
+        kFnInput,
+        kFnProjects,
+        kFnSettings,
+        kFnManual,
+        kFnModes,
+        kFnUndo,
+        kFnTap,
+        kFnMetronome,
+        kFnPlayAll,
+        kFnTracker,
+        kFnActions
+    };
+    static const char* const kFnActionNames[kFnActions];
+    static const uint8_t kFnDefaults[8];
+    uint8_t fnBinding[8];
+    bool fnLoaded = false;
+    void fnAction(int action, bool press);
+    void loadFnKeys();
+    void saveFnKeys();
+
     // ---- helpers ----
     void setFunctions();
     void showPage(Page p);

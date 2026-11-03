@@ -177,6 +177,38 @@ bool cLooper::loadWav(int t, const char* path)
     return loaded > 0;
 }
 
+// the Looper's Fn key bindings: "LKEY" + 8 action numbers
+void cLooper::loadFnKeys()
+{
+    memcpy(fnBinding, kFnDefaults, sizeof(fnBinding));
+    fnLoaded = true;
+    FileSystem* f = fs();
+    if (!f->exists("/Looper/keys.cfg")) return;
+    auto [ok, h] = f->openFile("/Looper/keys.cfg", FileSystem::kRead);
+    if (!ok) return;
+    uint8_t b[12];
+    if (f->readFile(b, sizeof(b), h) == sizeof(b) && memcmp(b, "LKEY", 4) == 0)
+    {
+        for (int i = 0; i < 8; i++)
+            if (b[4 + i] < kFnActions) fnBinding[i] = b[4 + i];
+    }
+    f->closeFile(h);
+}
+
+void cLooper::saveFnKeys()
+{
+    FileSystem* f = fs();
+    f->mkdir(0, kRoot);
+    if (f->exists("/Looper/keys.cfg")) f->remove("/Looper/keys.cfg");
+    auto [ok, h] = f->openFile("/Looper/keys.cfg", FileSystem::kWriteCreateNew);
+    if (!ok) return;
+    uint8_t b[12];
+    memcpy(b, "LKEY", 4);
+    memcpy(b + 4, fnBinding, 8);
+    f->writeFile(b, sizeof(b), h);
+    f->closeFile(h);
+}
+
 void cLooper::newProjectName()
 {
     // the first free "Loop NN"
