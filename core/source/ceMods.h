@@ -28,6 +28,10 @@ inline uint8_t& humanizeVolume() { return settings()[2]; }
 // Interpolate: CC FX ramps between steps. 0 = Off, 1 = On
 inline uint8_t& interpolateMidi() { return settings()[3]; }
 inline uint8_t& interpolateSynth() { return settings()[4]; }
+
+// Master FX: 0 = Stock; see core/libs/Audio/ceMasterFx/ceMasterFx.h for the lists
+inline uint8_t& masterReverb() { return settings()[5]; }
+inline uint8_t& masterDelay() { return settings()[6]; }
 } // namespace ceMods
 
 #endif
