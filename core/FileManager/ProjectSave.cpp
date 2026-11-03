@@ -1,3 +1,4 @@
+#include "ceBackup.h"
 #include "ProjectSave.h"
 
 #include "VoiceStreamManager.h"
@@ -539,6 +540,8 @@ void ProjectSave::saveProjectFinish()
 
     newFileManager.setStatus(fmSaveEnd);
     newFileManager.setCurrentOperation(fmNoOperation);
+
+    ceBackup::projectSaved(); // tracker-mini-ce: Auto Backup
 }
 
 //=================================================================================================

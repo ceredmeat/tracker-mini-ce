@@ -5,6 +5,7 @@
 #include "mtWavetableEnvelopes.h"
 #include "core/interface.h"
 #include "elapsedMillis.h"
+#include "ceBackup.h"
 #include "fileManager.h"
 #include "mtAudioEngine.h"
 #include "mtAudioExport.h"
@@ -164,6 +165,7 @@ void TrackerImpl::update()
     exporter.update();
     sliceDetector.update();
     newFileManager.update();
+    ceBackup::update(); // tracker-mini-ce: Auto Backup
     mtInterface.update();
     engine.updateSdStream();
     sequencer.update();
