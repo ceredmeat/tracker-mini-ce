@@ -24,7 +24,7 @@ class Exp2 {
   static int32_t lookup(int32_t x);
 };
 
-#define EXP2_LG_N_SAMPLES 10
+#define EXP2_LG_N_SAMPLES 8 // tracker-mini-ce: 10 -> 8 (on-chip RAM)
 #define EXP2_N_SAMPLES (1 << EXP2_LG_N_SAMPLES)
 
 #define EXP2_INLINE
@@ -53,7 +53,7 @@ class Tanh {
   static int32_t lookup(int32_t x);
 };
 
-#define TANH_LG_N_SAMPLES 10
+#define TANH_LG_N_SAMPLES 8 // tracker-mini-ce: 10 -> 8
 #define TANH_N_SAMPLES (1 << TANH_LG_N_SAMPLES)
 
 extern int32_t tanhtab[TANH_N_SAMPLES << 1];

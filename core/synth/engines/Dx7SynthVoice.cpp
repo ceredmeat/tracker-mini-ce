@@ -195,7 +195,6 @@ void initTables()
         return;
     }
     Exp2::init();
-    Tanh::init();
     Sin::init();
     Freqlut::init(sdk::kSampleRate);
     Lfo::init(sdk::kSampleRate);

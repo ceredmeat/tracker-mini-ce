@@ -6,8 +6,10 @@ engine (`core/synth/engines/Dx7SynthVoice.cpp`).
 
 Changes made for tracker-mini-ce:
 - `.cc` files renamed `.cpp` (the build picks up `.cpp`).
-- `exp2.cpp`, `sin.cpp`, `freqlut.cpp`: the lookup tables placed in the external RAM on
-  i.MX builds (`MSFA_TABLE`).
+- `exp2.h`, `sin.h`, `freqlut.cpp`: the lookup tables are 256 points instead of 1024 (linear
+  interpolation keeps the error below about -80 dB), placed in the on-chip OCRAM on i.MX
+  builds (`MSFA_TABLE`): the DTCM and the external RAM are full. 5 KB in all; the tanh table
+  isn't used.
 - `fm_core.cpp`: `<iostream>` and `FmCore::dump()` only with `VERBOSE`.
 - `env.cpp`, `fm_core.cpp`, `dx7note.cpp`: `using namespace std;` removed (it made `min` /
   `max` ambiguous with `synth.h`'s).

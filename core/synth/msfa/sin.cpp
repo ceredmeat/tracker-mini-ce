@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-// tracker-mini-ce: the table in the external RAM (the fast on-chip RAM is full); filled
+// tracker-mini-ce: the table in the on-chip OCRAM (DTCM and the external RAM are full); filled
 // by init() when the first DX7 voice is made, after start-up.
 #ifdef PLATFORM_IMX
 #include "cr_section_macros.h"
-#define MSFA_TABLE __NOINIT(EXTERNAL_RAM)
+#define MSFA_TABLE __BSS(SRAM_OC)
 #else
 #define MSFA_TABLE
 #endif

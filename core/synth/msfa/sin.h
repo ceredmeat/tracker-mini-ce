@@ -26,7 +26,7 @@ class Sin {
   static int32_t compute10(int32_t phase);
 };
 
-#define SIN_LG_N_SAMPLES 10
+#define SIN_LG_N_SAMPLES 8 // tracker-mini-ce: 10 -> 8 (on-chip RAM)
 #define SIN_N_SAMPLES (1 << SIN_LG_N_SAMPLES)
 
 #define SIN_INLINE
