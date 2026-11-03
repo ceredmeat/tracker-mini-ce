@@ -205,7 +205,7 @@ static bool checkFile(FileSystem* fs, uint16_t& w, uint16_t& h, uint16_t& padW, 
 
         // the coded data up to the end: FF only as FF 00 (a stuffed byte) or a restart
         // marker; the file must end exactly with EOI (FF D9)
-        static uint8_t chunk[2048];
+        uint8_t chunk[1024]; // on the stack: only used once, at boot
         bool prevFF = false, eoi = false;
         while (pos < size && !bad && !eoi)
         {
