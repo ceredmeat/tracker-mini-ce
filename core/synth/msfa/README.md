@@ -12,3 +12,4 @@ Changes made for tracker-mini-ce:
 - `env.cpp`, `fm_core.cpp`, `dx7note.cpp`: `using namespace std;` removed (it made `min` /
   `max` ambiguous with `synth.h`'s).
 - `aligned_buf.h`: includes `<stddef.h>` and `<stdint.h>`.
+- `env.cpp`: `Env::init` takes `int ol` as its declaration does (on ARM newlib, int32_t is long).

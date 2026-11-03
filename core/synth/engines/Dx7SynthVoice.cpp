@@ -264,7 +264,7 @@ class Dx7Voice final : public InstrumentVoice
             std::fill(R.begin(), R.end(), 0.0f);
             return;
         }
-        const float gain = std::clamp(p[kVolume], 0.0f, 1.5f) * (1.0f / static_cast<float>(1 << 26)) // one carrier at full level: 0.5;
+        const float gain = std::clamp(p[kVolume], 0.0f, 1.5f) * (1.0f / static_cast<float>(1 << 26)); // one carrier at full level: 0.5
         int32_t peak = 0;
         for (size_t at = 0; at + kMsfaBlock <= L.size(); at += kMsfaBlock)
         {
