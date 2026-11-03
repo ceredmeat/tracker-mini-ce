@@ -19,7 +19,16 @@ const char* const OffOnNames[] = { "Off", "On" };
 static const int synthModelListImages[Synth::kSynthTypes.size()] = {
     enDisplayBitmaps::kBitmapACD,  enDisplayBitmaps::kBitmapFAT,  enDisplayBitmaps::kBitmapVAP,
     enDisplayBitmaps::kBitmapWTFM, enDisplayBitmaps::kBitmapPERC, enDisplayBitmaps::kBitmapDIRT, enDisplayBitmaps::kBitmapCHIP,
-    enDisplayBitmaps::kBitmapWAVE, enDisplayBitmaps::kBitmapPHASE
+    enDisplayBitmaps::kBitmapWAVE, enDisplayBitmaps::kBitmapPHASE,
+    enDisplayBitmaps::kBitmapFM4, enDisplayBitmaps::kBitmapJU6,
+    enDisplayBitmaps::kBitmapDTYPE,
+    enDisplayBitmaps::kBitmapATYPE,
+    enDisplayBitmaps::kBitmapCSTYPE,
+    enDisplayBitmaps::kBitmapTTYPE,
+    enDisplayBitmaps::kBitmapEIGHT,
+    enDisplayBitmaps::kBitmapHAND,
+    enDisplayBitmaps::kBitmapBTYPE,
+    enDisplayBitmaps::kBitmapARC,
 };
 
 static cInstrumentEditor* IE = &instrumentEditor;

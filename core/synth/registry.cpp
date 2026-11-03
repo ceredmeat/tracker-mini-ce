@@ -4,6 +4,7 @@
 #include "PolySynth/sdk/InstrumentTypeRegistry.h"
 #include "engines/ChiptuneSynthVoice.h"
 #include "engines/CeSynthVoices.h"
+#include "engines/OtSynthVoices.h"
 
 namespace polysynth
 {
@@ -37,6 +38,17 @@ void InstrumentTypeRegistry::registerInstrumentTypes(
     // tracker-mini-ce
     registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kWaveSynth), createWaveSynth());
     registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kPhaseSynth), createPhaseSynth());
+    // tracker-mini-ce: OpenTracker engines (MIT, Marcin Spoczynski)
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtFm4Synth), createOtFm4Synth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtJu6Synth), createOtJu6Synth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtDtypeSynth), createOtDtypeSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtAtypeSynth), createOtAtypeSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtCstypeSynth), createOtCstypeSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtTtypeSynth), createOtTtypeSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtEightSynth), createOtEightSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtHandSynth), createOtHandSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtBtypeSynth), createOtBtypeSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtArcSynth), createOtArcSynth());
 }
 
 } // namespace polysynth
