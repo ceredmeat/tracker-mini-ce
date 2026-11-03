@@ -213,8 +213,6 @@ class Dx7Voice final : public InstrumentVoice
         {
             p[i] = d[i].def;
         }
-        std::memset(&ctrls, 0, sizeof ctrls);
-        ctrls.values_[kControllerPitch] = 0x2000;
     }
 
     void onMidiEvent(const InstrumentVoiceContext&, const MidiEvent& e) override
@@ -235,7 +233,7 @@ class Dx7Voice final : public InstrumentVoice
                 // msfa: +-0x2000 = +-3 semitones; CE: +-2
                 float semis = (static_cast<float>(e.data.pitchBendChange.value) * 2.0f) /
                               static_cast<float>(MidiEvent::Data::PitchBendChange::kMaxValue);
-                ctrls.values_[kControllerPitch] = std::clamp(0x2000 + static_cast<int>(semis / 3.0f * 8192.0f), 0, 16383);
+                pitch = std::clamp(0x2000 + static_cast<int>(semis / 3.0f * 8192.0f), 0, 16383);
                 break;
             }
             default: break;
@@ -270,7 +268,8 @@ class Dx7Voice final : public InstrumentVoice
             int32_t buf[kMsfaBlock] = {};
             int32_t lfoVal = lfo.getsample();
             int32_t lfoDelay = lfo.getdelay();
-            dx7.compute(buf, lfoVal, lfoDelay, &ctrls);
+            sharedCtrls().values_[kControllerPitch] = pitch;
+            dx7.compute(buf, lfoVal, lfoDelay, &sharedCtrls());
             for (int i = 0; i < kMsfaBlock; i++)
             {
                 const float s = static_cast<float>(buf[i]) * gain;
@@ -393,10 +392,18 @@ class Dx7Voice final : public InstrumentVoice
         playing = false;
     }
 
+    // msfa reads only the pitch bend from its controllers: one shared object (the voices
+    // render one after another), each voice setting its bend before it computes.
+    static Controllers& sharedCtrls()
+    {
+        static Controllers c{};
+        return c;
+    }
+
     float p[kParamCount] = {};
     Dx7Note dx7;
     Lfo lfo;
-    Controllers ctrls;
+    int pitch = 0x2000;
     note_t note = 60;
     float velocity = 1.0f;
     bool hasNote = false;
