@@ -6,6 +6,8 @@
 #include "patternEditor/patternEditor.h"
 #include "performanceMode/performanceMode.h"
 #include "scales.h"
+#include "ceCanvas.h"
+#include "ceVisual.h"
 
 #ifdef GUI_HANDLE_SYNTH
 #include "Synth.h"
@@ -1575,7 +1577,7 @@ void cPatternEditor::showActionButtonPage3Labels()
     display.setControlText(label[3], "");
     display.setControlText(label[4], "");
     display.setControlText(label[5], "");
-    display.setControlText(label[6], "");
+    display.setControlText(label[6], "Visual");
     display.setControlText(label[7], "More");
 
     display.setControlText2(label[0], "Name");
@@ -1584,8 +1586,11 @@ void cPatternEditor::showActionButtonPage3Labels()
     display.setControlText2(label[3], "");
     display.setControlText2(label[4], "");
     display.setControlText2(label[5], "");
-    display.setControlText2(label[6], "");
+    display.setControlText2(label[6], ceVis::isOn() ? ceVis::styleName(ceVis::style()) : "Off");
     display.setControlText2(label[7], "");
+
+    display.setControlData(label[6], &labelDataGreen);
+    display.setControlColors(label[6], display.getTheme().activeButtonLabelsColors);
 
     if (editMode)
     {
@@ -1621,6 +1626,20 @@ void cPatternEditor::showActionButtonPage3Labels()
     labelDataMore.dotIndicator.current = 2;
 
     display.synchronizeRefresh();
+}
+
+// "Visual": while held, the style that a turn picks; else the style or Off
+void cPatternEditor::showVisualLabel(bool held)
+{
+    if (actualActionButtonsPage != 2)
+        return;
+    static char text[24];
+    if (held)
+        snprintf(text, sizeof(text), "< %s >", ceVis::styleName(ceVis::style()));
+    else
+        snprintf(text, sizeof(text), "%s", ceVis::isOn() ? ceVis::styleName(ceVis::style()) : "Off");
+    display.setControlText2(label[6], text);
+    display.refreshControl(label[6]);
 }
 
 void cPatternEditor::showTitleBar()
