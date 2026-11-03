@@ -6,6 +6,8 @@
 #include "patternEditor/patternEditor.h"
 #include "performanceMode/performanceMode.h"
 #include "scales.h"
+#include "ceGenerate.h"
+#include "ceModsExtra.h"
 
 #ifdef GUI_HANDLE_SYNTH
 #include "Synth.h"
@@ -1574,7 +1576,7 @@ void cPatternEditor::showActionButtonPage3Labels()
     display.setControlText(label[2], "Track");
     display.setControlText(label[3], "Humanize");
     display.setControlText(label[4], "Copy to");
-    display.setControlText(label[5], "");
+    display.setControlText(label[5], "Generate");
     display.setControlText(label[6], "");
     display.setControlText(label[7], "More");
 
@@ -1583,7 +1585,7 @@ void cPatternEditor::showActionButtonPage3Labels()
     display.setControlText2(label[2], "Length");
     display.setControlText2(label[3], "Selection");
     display.setControlText2(label[4], "New");
-    display.setControlText2(label[5], "");
+    display.setControlText2(label[5], ceGen::name(ceExtra::at(ceExtra::kGenAlgorithm) % ceGen::kAlgorithmCount));
     display.setControlText2(label[6], "");
     display.setControlText2(label[7], "");
 
@@ -1593,6 +1595,10 @@ void cPatternEditor::showActionButtonPage3Labels()
                                       : display.getTheme().inactiveButtonLabelsColors);
     display.setControlData(label[4], &labelDataRed);
     display.setControlColors(label[4],
+                             editMode ? display.getTheme().activeButtonLabelsColors
+                                      : display.getTheme().inactiveButtonLabelsColors);
+    display.setControlData(label[5], &labelDataGreen);
+    display.setControlColors(label[5],
                              editMode ? display.getTheme().activeButtonLabelsColors
                                       : display.getTheme().inactiveButtonLabelsColors);
 
@@ -1659,6 +1665,21 @@ void cPatternEditor::showTrackLengthLabel(bool held)
         display.setControlText2(label[2], "Length");
     }
     display.refreshControl(label[2]);
+}
+
+// While "Generate" is held its label says what a tap does and which algorithm is chosen.
+void cPatternEditor::showGenerateLabel(bool held)
+{
+    if (actualActionButtonsPage != 2)
+        return;
+    const char* algo = ceGen::name(ceExtra::at(ceExtra::kGenAlgorithm) % ceGen::kAlgorithmCount);
+    static char text[24];
+    if (held)
+        snprintf(text, sizeof(text), "< %s >", algo);
+    else
+        snprintf(text, sizeof(text), "%s", algo);
+    display.setControlText2(label[5], text);
+    display.refreshControl(label[5]);
 }
 
 void cPatternEditor::showTitleBar()

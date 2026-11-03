@@ -264,6 +264,11 @@ class cPatternEditor : public ModuleBase
     static constexpr int8_t kTrackLengthPlace = 10; // "Track Length" held (page 3, button 3)
     void changeTrackLength(int16_t value);
     void showTrackLengthLabel(bool held);
+    static constexpr int8_t kGeneratePlace = 11; // "Generate" held (page 3, button 6)
+    bool generateTurned = false;
+    void changeGenerateAlgorithm(int16_t value);
+    void showGenerateLabel(bool held);
+    bool isShiftPressed() { return buttons->isButtonPressed(interfaceButtonShift); }
     bool undoRedoOpen = 0;     // true jesli operujemy jogiem na undoRedo
 
     // parametry
