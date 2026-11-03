@@ -57,7 +57,6 @@ const InterfaceMenuPopup::ModuleRef InterfaceMenuPopup::modules[12] = {
     { mtInterface.modules[11], interfaceButtonLooperVirtual, 0, nullptr },
     { mtInterface.modules[11], interfaceButtonLooperVirtual, 0, nullptr },
 };
-#endif
 #else
 const InterfaceMenuPopup::ModuleRef InterfaceMenuPopup::modules[kMenuModulesCount] = {
     { mtInterface.modules[2], interfaceButtonPattern, 0, nullptr },
@@ -76,6 +75,7 @@ const InterfaceMenuPopup::ModuleRef InterfaceMenuPopup::modules[kMenuModulesCoun
 #endif
 
 };
+#endif // CE_LOOPER_ONLY
 
 static void functLeftPopup();
 static void functRightPopup();

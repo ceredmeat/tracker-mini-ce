@@ -14,7 +14,7 @@ const FxDesc kFxDesc[kFxTypes] = {
     {"Reverb", 4, {"Size", "Tone", "Width", "Pre-delay"}, {60, 50, 100, 0}},
     {"Chorus", 3, {"Rate", "Depth", "Width"}, {30, 50, 100}},
     {"Flanger", 4, {"Rate", "Depth", "Feedback", "Manual"}, {20, 60, 60, 30}},
-    {"Clouds", 8, {"Position", "Size", "Pitch", "Density", "Texture", "Feedback", "Spread", "Freeze"}, {30, 40, 50, 65, 50, 0, 50, 0}},
+    {"Grains", 8, {"Position", "Size", "Pitch", "Density", "Texture", "Feedback", "Spread", "Freeze"}, {30, 40, 50, 65, 50, 0, 50, 0}},
     {"Phaser", 4, {"Rate", "Depth", "Feedback", "Width"}, {25, 70, 50, 100}},
     {"Shimmer", 4, {"Size", "Tone", "Shimmer", "Width"}, {70, 60, 50, 100}},
     {"Tape echo", 4, {"Time", "Feedback", "Wow", "Drive"}, {46, 45, 30, 40}},

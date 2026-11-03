@@ -23,11 +23,11 @@ static constexpr int kWaveH = 88;
 static constexpr int kKeysY = 424;
 static constexpr uint32_t kLaneStride = kWaveW / 4;
 static constexpr uint32_t kLaneBytes = kLaneStride * kWaveH;
-static constexpr uint32_t kLaneRamG = 680000;
+static constexpr uint32_t kLaneRamG = 683000;   // past the controls' display lists (150000 + 65 x 8192)
 static constexpr int kEdH = 300;
 static constexpr int kEdY = 60;
 static constexpr uint32_t kEdBytes = kLaneStride * kEdH;
-static constexpr uint32_t kEdRamG = 750000;
+static constexpr uint32_t kEdRamG = 751000;
 static constexpr uint8_t kBitmapHandle = 14;
 
 // colours
@@ -1291,11 +1291,11 @@ static const char* const kManual[8][9] = {
     {"Performance mode", "Instr (or Perform, Fn2) toggles it; hold it to use it while held.",
      "Pad columns 5-12: repeat, repeat, low-pass, high-pass,", "sweep down, sweep up, vibrato, tape stop. Hold to play,",
      "Shift + pad to latch. Hold a pad and turn: that track's knob.", "The screen keys play an effect on every track at once;",
-     "hold one and turn for its knob. Column 4: freeze Clouds", "(row 1 FX 1, row 2 FX 2).", ""},
+     "hold one and turn for its knob. Column 4: freeze Grains", "(row 1 FX 1, row 2 FX 2).", ""},
     {"Mixer and effects", "Master (Fn4): seven strips. Sends to both effects,",
      "a DJ filter (down: low-pass, up: high-pass) and the level.", "FX strips: the first knob, the send into the other slot",
      "(chain), the return. Shift + key: mute. Again: its page.", "Fx / Vol keys: the FX 1 / FX 2 page. TYPE picks one of",
-     "twelve: Delay, Ping-pong, Reverb, Chorus, Flanger, Clouds,", "Phaser, Shimmer, Tape echo, Reverse, Prime time, Lo-fi.",
+     "twelve: Delay, Ping-pong, Reverb, Chorus, Flanger, Grains,", "Phaser, Shimmer, Tape echo, Reverse, Prime time, Lo-fi.",
      "Left / Right pick a knob; the encoder turns it."},
     {"Loop editor", "Note: the selected track with start and end markers.",
      "START / END pick a marker, SNAP its steps (bar, beat, 1/16, free).", "TRIM keeps the selection (instant, UNDO puts it back).",
