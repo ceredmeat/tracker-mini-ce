@@ -3,6 +3,7 @@
 
 #include "PolySynth/sdk/InstrumentTypeRegistry.h"
 #include "engines/ChiptuneSynthVoice.h"
+#include "engines/CeSynthVoices.h"
 
 namespace polysynth
 {
@@ -33,6 +34,9 @@ void InstrumentTypeRegistry::registerInstrumentTypes(
     // Open-Source Custom Synth Engines
     registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kChiptuneSynth),
                                createChiptuneSynth());
+    // tracker-mini-ce
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kWaveSynth), createWaveSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kPhaseSynth), createPhaseSynth());
 }
 
 } // namespace polysynth
