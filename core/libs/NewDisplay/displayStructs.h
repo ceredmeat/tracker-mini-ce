@@ -104,6 +104,8 @@ enum enDisplayBitmaps
     kBitmapBTYPE,
     kBitmapMiniARC,
     kBitmapARC,
+    kBitmapMiniDX7,
+    kBitmapDX7,
 
 #endif
 

@@ -29,6 +29,7 @@ static const int synthModelListImages[Synth::kSynthTypes.size()] = {
     enDisplayBitmaps::kBitmapHAND,
     enDisplayBitmaps::kBitmapBTYPE,
     enDisplayBitmaps::kBitmapARC,
+    enDisplayBitmaps::kBitmapDX7,
 };
 
 static cInstrumentEditor* IE = &instrumentEditor;

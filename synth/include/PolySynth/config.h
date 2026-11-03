@@ -52,7 +52,8 @@ enum class InstrumentTypeId
     kOtHandSynth,
     kOtBtypeSynth,
     kOtArcSynth,
-    kLastSynth = kOtArcSynth,
+    kDx7Synth,   // tracker-mini-ce: DX7 (msfa)
+    kLastSynth = kDx7Synth,
     kDelay = 1000,
     kReverb,
 };
