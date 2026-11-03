@@ -78,6 +78,25 @@ const uint8_t Interface::modulesButtonsCount = 12;
 #else
 const uint8_t Interface::modulesButtonsCount = 11;
 #endif
+#ifdef CE_LOOPER_ONLY
+const uint32_t Interface::modulesButtons[modulesButtonsCount][3] = {
+    // looper-only firmware: every module key leads to the Looper, Config stays Config
+    { interfaceButtonPerformance, 11, 0 },
+    { interfaceButtonMaster, 11, 0 },
+    { interfaceButtonParams, 11, 0 },
+    { interfaceButtonFile, 11, 0 },
+    { interfaceButtonPattern, 11, 0 },
+    { interfaceButtonSamplePlay, 11, 0 },
+    { interfaceButtonSampleEdit, 11, 0 },
+    { interfaceButtonSampleRec, 11, 0 },
+    { interfaceButtonSampleLoad, 11, 0 },
+    { interfaceButtonSong, 11, 0 },
+    { interfaceButtonConfig, 7, 0 },
+#ifdef CE_LOOPER
+    { interfaceButtonLooperVirtual, 11, 0 },
+#endif
+};
+#else
 const uint32_t Interface::modulesButtons[modulesButtonsCount][3] = {
     { interfaceButtonPerformance, 9, 0 },
     { interfaceButtonMaster, 12, 0 },
@@ -94,6 +113,7 @@ const uint32_t Interface::modulesButtons[modulesButtonsCount][3] = {
     { interfaceButtonLooperVirtual, 11, 0 },
 #endif
 };
+#endif
 
 //=======================================================================
 //=======================================================================

@@ -113,9 +113,11 @@ void cLooper::setFunctions()
         interfaceButtonMaster,     interfaceButtonFx1,        interfaceButtonFx2,  interfaceButtonNote,
         interfaceButtonSampleEdit, interfaceButtonPerformance, interfaceButtonInstr, interfaceButtonParams,
         interfaceButtonPattern,    interfaceButtonConfig,      interfaceButtonFile, interfaceButtonSong,
-        interfaceButtonSampleLoad, interfaceButtonMiniFn1,     interfaceButtonMiniFn2, interfaceButtonMiniFn3,
-        interfaceButtonMiniFn4,    interfaceButtonSamplePlay,  interfaceButtonSampleRec,
+        interfaceButtonSampleLoad, interfaceButtonSamplePlay,  interfaceButtonSampleRec,
     };
+    // Not the Mini's Fn1-Fn4: they have handlers for the whole firmware, set once at boot,
+    // that press the module keys they are bound to (Pattern, Master, Song ...). Those reach
+    // the keys above. Taking them over here left them pointing at the Looper after it closed.
     for (uint8_t k : pageKeys)
         ip->setButtonObj(k, functPageKey);
 }
@@ -1162,8 +1164,7 @@ static void functPageKey(uint8_t button, uint8_t state)
     bool release = state == buttonRelease;
 
     // Perform (or Instr): tap latches, hold works while held
-    if (button == interfaceButtonPerformance || button == interfaceButtonInstr || button == interfaceButtonParams ||
-        (button == interfaceButtonMiniFn3 && !LP->shift))
+    if (button == interfaceButtonPerformance || button == interfaceButtonInstr || button == interfaceButtonParams)
     {
         if (press)
         {
@@ -1198,24 +1199,21 @@ static void functPageKey(uint8_t button, uint8_t state)
     }
     if (!press) return;
 
-    if (button == interfaceButtonMaster || (button == interfaceButtonMiniFn1 && !LP->shift))
+    if (button == interfaceButtonMaster)
     {
         LP->mixStrip = LP->sel;
         LP->showPage(cLooper::kMixer);
     }
-    else if (button == interfaceButtonFx1 || button == interfaceButtonFx2 || (button == interfaceButtonMiniFn2 && !LP->shift))
+    else if (button == interfaceButtonFx1 || button == interfaceButtonFx2)
     {
         if (button == interfaceButtonFx1)
             LP->fxSlot = 0;
         else if (button == interfaceButtonFx2)
             LP->fxSlot = 1;
-        else if (LP->page == cLooper::kFx)
-            LP->fxSlot ^= 1;
         LP->fxKnob = 1;
         LP->showPage(cLooper::kFx);
     }
-    else if (button == interfaceButtonNote || button == interfaceButtonSampleEdit ||
-             (button == interfaceButtonMiniFn4 && !LP->shift))
+    else if (button == interfaceButtonNote || button == interfaceButtonSampleEdit)
         LP->showPage(cLooper::kEditor);
     else if (button == interfaceButtonPattern)
     {
@@ -1227,14 +1225,12 @@ static void functPageKey(uint8_t button, uint8_t state)
         LP->bar = cLooper::kBarMain;
         LP->showPage(cLooper::kHome);
     }
-    else if (button == interfaceButtonConfig || (button == interfaceButtonMiniFn2 && LP->shift))
+    else if (button == interfaceButtonConfig)
         LP->showPage(cLooper::kConfig);
-    else if (button == interfaceButtonFile || button == interfaceButtonSampleLoad || (button == interfaceButtonMiniFn3 && LP->shift))
+    else if (button == interfaceButtonFile || button == interfaceButtonSampleLoad)
         LP->showPage(cLooper::kFile);
-    else if (button == interfaceButtonSong || (button == interfaceButtonMiniFn4 && LP->shift))
+    else if (button == interfaceButtonSong)
         LP->showPage(cLooper::kManual);
-    else if (button == interfaceButtonMiniFn1 && LP->shift)
-        LP->showPage(cLooper::kInput);
     else if (button == interfaceButtonSamplePlay || button == interfaceButtonSampleRec)
         LP->showPage(cLooper::kInput);
 }
