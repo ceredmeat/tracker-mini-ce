@@ -13,3 +13,4 @@ Changes made for tracker-mini-ce:
   `max` ambiguous with `synth.h`'s).
 - `aligned_buf.h`: includes `<stddef.h>` and `<stdint.h>`.
 - `env.cpp`: `Env::init` takes `int ol` as its declaration does (on ARM newlib, int32_t is long).
+- `fm_core.h`: `FmCore::compute`'s last parameter `int`, as its definition (same ARM reason).

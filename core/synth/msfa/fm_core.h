@@ -29,7 +29,7 @@ class FmCore {
  public:
   static void dump();
   void compute(int32_t *output, FmOpParams *params, int algorithm,
-               int32_t *fb_buf, int32_t feedback_gain);
+               int32_t *fb_buf, int feedback_gain);
  private:
   AlignedBuf<int32_t, N>buf_[2];
 };
