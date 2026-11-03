@@ -1,12 +1,12 @@
 // tracker-mini-ce: DX7, a six-operator FM engine on Google's Music Synthesizer for All
 // (msfa, Apache-2.0, core/synth/msfa/; the DX7 core Dexed is built on - Dexed itself is
 // GPL and not used). Every DX7 voice parameter is a patch parameter, in the DX7's own
-// order and ranges (ids 0-144: the 155-byte voice without the name; 145: Volume), so a
-// DX7 voice bank converted with tools/dx7_syx_to_patches.py loads 1:1.
+// order and ranges (ids 0-144: the 155-byte voice without the name; 145: Volume).
 //
 // The voice is CE's InstrumentVoice directly (CustomSynthVoice tops out at 128
-// parameters). A note takes the parameters at its start, as the DX7 does; msfa renders
-// 64 frames at a time, so a CE block is two of them.
+// parameters). Changes reach a sounding note at the next block (Dx7Note::update, added to
+// msfa here), as do amplitude modulation and Osc Key Sync. msfa renders 64 frames at a
+// time, so a CE block is two of them.
 
 #include "config.h"
 
@@ -244,7 +244,14 @@ class Dx7Voice final : public InstrumentVoice
     {
         if (id >= 0 && id < kParamCount && v)
         {
-            p[id] = *v;
+            if (p[id] != *v)
+            {
+                p[id] = *v;
+                if (id < kVoiceBytes)
+                {
+                    dirty = true; // a sounding note takes it at the next block
+                }
+            }
         }
     }
 
@@ -260,6 +267,18 @@ class Dx7Voice final : public InstrumentVoice
             std::fill(L.begin(), L.end(), 0.0f);
             std::fill(R.begin(), R.end(), 0.0f);
             return;
+        }
+        if (dirty)
+        {
+            char voice[156];
+            fillVoice(voice);
+            if (voice[kLfoSpeed] != lfoParams[0] || std::memcmp(lfoParams, &voice[kLfoSpeed], 6) != 0)
+            {
+                std::memcpy(lfoParams, &voice[kLfoSpeed], 6);
+                lfo.reset(lfoParams); // keeps its phase
+            }
+            dx7.update(voice, midiNote, midiVelocity);
+            dirty = false;
         }
         const float gain = std::clamp(p[kVolume], 0.0f, 1.5f) * (1.0f / static_cast<float>(1 << 26)); // one carrier at full level: 0.5
         int32_t peak = 0;
@@ -365,9 +384,8 @@ class Dx7Voice final : public InstrumentVoice
     }
 
   private:
-    void noteOn(int n, int vel)
+    void fillVoice(char* voice) const
     {
-        char voice[156];
         for (int i = 0; i < kVoiceBytes; i++)
         {
             voice[i] = static_cast<char>(std::clamp<long>(std::lround(p[i]), 0, std::lround(defs()[i].max)));
@@ -376,10 +394,19 @@ class Dx7Voice final : public InstrumentVoice
         {
             voice[i] = ' ';
         }
-        const int midi = std::clamp(n + voice[kTranspose] - 24, 0, 127);
-        dx7.init(voice, midi, std::clamp(vel, 1, 127));
-        lfo.reset(&voice[kLfoSpeed]);
+    }
+
+    void noteOn(int n, int vel)
+    {
+        char voice[156];
+        fillVoice(voice);
+        midiNote = std::clamp(n + voice[kTranspose] - 24, 0, 127);
+        midiVelocity = std::clamp(vel, 1, 127);
+        dx7.init(voice, midiNote, midiVelocity);
+        std::memcpy(lfoParams, &voice[kLfoSpeed], 6);
+        lfo.reset(lfoParams);
         lfo.keydown();
+        dirty = false;
         note = static_cast<note_t>(n);
         velocity = static_cast<float>(vel) / 127.0f;
         hasNote = playing = active = true;
@@ -404,6 +431,10 @@ class Dx7Voice final : public InstrumentVoice
     Dx7Note dx7;
     Lfo lfo;
     int pitch = 0x2000;
+    int midiNote = 60;
+    int midiVelocity = 100;
+    char lfoParams[6] = {};
+    bool dirty = false;
     note_t note = 60;
     float velocity = 1.0f;
     bool hasNote = false;

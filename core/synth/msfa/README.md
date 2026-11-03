@@ -16,3 +16,7 @@ Changes made for tracker-mini-ce:
 - `aligned_buf.h`: includes `<stddef.h>` and `<stdint.h>`.
 - `env.cpp`: `Env::init` takes `int ol` as its declaration does (on ARM newlib, int32_t is long).
 - `fm_core.h`: `FmCore::compute`'s last parameter `int`, as its definition (same ARM reason).
+- `dx7note.*`, `env.*` (tracker-mini-ce additions): amplitude modulation (AMD with each
+  operator's AMS: 0 / 4.5 / 9 / 24 dB at full depth, the LFO faded in by its delay),
+  Osc Key Sync (off: the operators run on from the last note), and `Dx7Note::update` /
+  `Env::update` so a sounding note takes parameter changes.

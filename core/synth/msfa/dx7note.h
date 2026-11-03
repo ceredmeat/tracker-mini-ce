@@ -29,7 +29,11 @@
 
 class Dx7Note {
  public:
-  void init(const char patch[128], int midinote, int velocity);
+  void init(const char patch[156], int midinote, int velocity);
+
+  // tracker-mini-ce: a sounding note takes new parameters (levels, envelopes, pitches,
+  // algorithm, feedback, modulation) without restarting.
+  void update(const char patch[156], int midinote, int velocity);
 
   // Note: this _adds_ to the buffer. Interesting question whether it's
   // worth it...
@@ -57,6 +61,13 @@ class Dx7Note {
   int algorithm_;
   int pitchmoddepth_;
   int pitchmodsens_;
+  // tracker-mini-ce: amplitude modulation (AMD, each operator's AMS) and oscillator sync
+  int ampmoddepth_;
+  int ampmodsens_[6];
+  bool oscsync_;
+  bool started_ = false;
+
+  void setup(const char patch[156], int midinote, int velocity, bool restart);
 };
 
 #endif  // SYNTH_DX7NOTE_H_

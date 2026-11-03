@@ -37,6 +37,10 @@ class Env {
   // Then, of course, log to linear.
   int32_t getsample();
 
+  // tracker-mini-ce: new rates, levels and output level for a sounding note: the level
+  // carries on from where it is towards the current stage's new target.
+  void update(const int rates[4], const int levels[4], int outlevel, int rate_scaling);
+
   void keydown(bool down);
   void setparam(int param, int value);
   static int scaleoutlevel(int outlevel);

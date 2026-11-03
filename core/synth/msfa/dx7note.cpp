@@ -129,6 +129,18 @@ static const uint8_t pitchmodsenstab[] = {
 };
 
 void Dx7Note::init(const char patch[156], int midinote, int velocity) {
+  setup(patch, midinote, velocity, true);
+}
+
+void Dx7Note::update(const char patch[156], int midinote, int velocity) {
+  setup(patch, midinote, velocity, false);
+}
+
+// tracker-mini-ce: amplitude modulation sensitivity 0..3 -> the attenuation, in Q24
+// doublings (1 << 24 = 6.02 dB), at full LFO and AMD 99: 0, 4.5, 9 and 24 dB.
+static const int32_t ampmodsenstab[4] = { 0, 12533760, 25067520, 66846720 };
+
+void Dx7Note::setup(const char patch[156], int midinote, int velocity, bool restart) {
   int rates[4];
   int levels[4];
   for (int op = 0; op < 6; op++) {
@@ -155,7 +167,12 @@ void Dx7Note::init(const char patch[156], int midinote, int velocity) {
     outlevel += ScaleVelocity(velocity, patch[off + 15]);
     outlevel = max(0, outlevel);
     int rate_scaling = ScaleRate(midinote, patch[off + 13]);
-    env_[op].init(rates, levels, outlevel, rate_scaling);
+    if (restart) {
+      env_[op].init(rates, levels, outlevel, rate_scaling);
+    } else {
+      env_[op].update(rates, levels, outlevel, rate_scaling);
+    }
+    ampmodsens_[op] = ampmodsenstab[patch[off + 14] & 3];
 
     int mode = patch[off + 17];
     int coarse = patch[off + 18];
@@ -164,19 +181,32 @@ void Dx7Note::init(const char patch[156], int midinote, int velocity) {
     int32_t freq = osc_freq(midinote, mode, coarse, fine, detune);
     basepitch_[op] = freq;
     // cout << op << " freq: " << freq << endl;
-    params_[op].phase = 0;
-    params_[op].gain[1] = 0;
+    if (restart) {
+      // Osc Key Sync on (or the voice's first note): every operator from phase 0;
+      // off: they run on from where the last note left them.
+      if (patch[136] || !started_) {
+        params_[op].phase = 0;
+      }
+      params_[op].gain[1] = 0;
+    }
   }
   for (int i = 0; i < 4; i++) {
     rates[i] = patch[126 + i];
     levels[i] = patch[130 + i];
   }
-  pitchenv_.set(rates, levels);
+  if (restart) {
+    pitchenv_.set(rates, levels);
+  }
   algorithm_ = patch[134];
   int feedback = patch[135];
   fb_shift_ = feedback != 0 ? 8 - feedback : 16;
   pitchmoddepth_ = (patch[139] * 165) >> 6;
   pitchmodsens_ = pitchmodsenstab[patch[143] & 7];
+  ampmoddepth_ = (patch[140] * 165) >> 6;  // 0..99 -> 0..255, as the pitch depth
+  oscsync_ = patch[136] != 0;
+  if (restart) {
+    started_ = true;
+  }
 }
 
 void Dx7Note::compute(int32_t *buf, int32_t lfo_val, int32_t lfo_delay,
@@ -191,9 +221,16 @@ void Dx7Note::compute(int32_t *buf, int32_t lfo_val, int32_t lfo_delay,
   int pitchbend = ctrls->values_[kControllerPitch];
   int32_t pb = (pitchbend - 0x2000) << 9;
   pitchmod += pb;
+  // tracker-mini-ce: amplitude modulation, the LFO (0..1, faded in by its delay) x AMD
+  // in Q24 (0..1).
+  const int32_t amd = (int32_t)(((int64_t)ampmoddepth_ * (int64_t)(lfo_delay >> 8)) >> 0);  // Q24 x 255 >> 8
+  const int32_t amod = (int32_t)(((int64_t)amd * (int64_t)lfo_val) >> 24);                  // Q24
   for (int op = 0; op < 6; op++) {
     params_[op].gain[0] = params_[op].gain[1];
     int32_t level = env_[op].getsample();
+    if (ampmodsens_[op]) {
+      level -= (int32_t)(((int64_t)amod * (int64_t)ampmodsens_[op]) >> 24);
+    }
     int32_t gain = Exp2::lookup(level - (14 * (1 << 24)));
     //int32_t gain = pow(2, 10 + level * (1.0 / (1 << 24)));
     params_[op].freq = Freqlut::lookup(basepitch_[op] + pitchmod);
