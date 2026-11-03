@@ -8,6 +8,8 @@
 #include "scales.h"
 #include "ceGenerate.h"
 #include "ceModsExtra.h"
+#include "ceCanvas.h"
+#include "ceVisual.h"
 
 #ifdef GUI_HANDLE_SYNTH
 #include "Synth.h"
@@ -1577,7 +1579,7 @@ void cPatternEditor::showActionButtonPage3Labels()
     display.setControlText(label[3], "Humanize");
     display.setControlText(label[4], "Copy to");
     display.setControlText(label[5], "Generate");
-    display.setControlText(label[6], "");
+    display.setControlText(label[6], "Visual");
     display.setControlText(label[7], "More");
 
     display.setControlText2(label[0], "Name");
@@ -1586,7 +1588,7 @@ void cPatternEditor::showActionButtonPage3Labels()
     display.setControlText2(label[3], "Selection");
     display.setControlText2(label[4], "New");
     display.setControlText2(label[5], ceGen::name(ceExtra::at(ceExtra::kGenAlgorithm) % ceGen::kAlgorithmCount));
-    display.setControlText2(label[6], "");
+    display.setControlText2(label[6], ceVis::isOn() ? ceVis::styleName(ceVis::style()) : "Off");
     display.setControlText2(label[7], "");
 
     display.setControlData(label[3], &labelDataRed);
@@ -1601,6 +1603,8 @@ void cPatternEditor::showActionButtonPage3Labels()
     display.setControlColors(label[5],
                              editMode ? display.getTheme().activeButtonLabelsColors
                                       : display.getTheme().inactiveButtonLabelsColors);
+    display.setControlData(label[6], &labelDataGreen);
+    display.setControlColors(label[6], display.getTheme().activeButtonLabelsColors);
 
     if (editMode)
     {
@@ -1680,6 +1684,20 @@ void cPatternEditor::showGenerateLabel(bool held)
         snprintf(text, sizeof(text), "%s", algo);
     display.setControlText2(label[5], text);
     display.refreshControl(label[5]);
+}
+
+// "Visual": while held, the style that a turn picks; else the style or Off
+void cPatternEditor::showVisualLabel(bool held)
+{
+    if (actualActionButtonsPage != 2)
+        return;
+    static char text[24];
+    if (held)
+        snprintf(text, sizeof(text), "< %s >", ceVis::styleName(ceVis::style()));
+    else
+        snprintf(text, sizeof(text), "%s", ceVis::isOn() ? ceVis::styleName(ceVis::style()) : "Off");
+    display.setControlText2(label[6], text);
+    display.refreshControl(label[6]);
 }
 
 void cPatternEditor::showTitleBar()

@@ -22,11 +22,11 @@
 
 #ifdef TRACKER_MINI
 constexpr uint8_t baseMenuGroupCount = 8;
-constexpr uint8_t projectMenuGroupCount = 17;
+constexpr uint8_t projectMenuGroupCount = 24;
 constexpr uint8_t generalMenuGroupCount = 9;
 #elif defined(PLATFORM_IMX)
 constexpr uint8_t baseMenuGroupCount = 7;
-constexpr uint8_t projectMenuGroupCount = 17;
+constexpr uint8_t projectMenuGroupCount = 24;
 constexpr uint8_t generalMenuGroupCount = 12;
 #else
 constexpr uint8_t baseMenuGroupCount = 6;

@@ -3,6 +3,8 @@
 #include "ceMods.h"
 #include "ceGenerate.h"
 #include "ceModsExtra.h"
+#include "ceVisual.h"
+#include "ceCanvas.h"
 #include <assert.h>
 #include <limits.h>
 #include <mtAudioExport.h>
@@ -55,6 +57,7 @@ static void functTrackLength(uint8_t state);
 static void functHumanize();
 static void functCopyToNew();
 static void functGenerate(uint8_t state);
+static void functVisual(uint8_t state);
 
 static void functClockWarningPopupButtons(uint8_t button, uint8_t state);
 
@@ -212,6 +215,12 @@ void cPatternEditor::update()
         start(0);
     }
 
+    // tracker-mini-ce: Visual, a frame every 30 ms
+    if (ceVis::tick() && visualCanvas >= 0)
+    {
+        display.refreshControl(visualCanvas);
+    }
+
     // cala reszta  wymagajaca odwiezania -----------------------------------
     if (patternRefreshTimer < 20)
     {
@@ -317,6 +326,7 @@ void cPatternEditor::start(uint32_t options)
 
     moduleRefresh = 1;
     patternButtonReleaseActive = 0;
+    if (ceVis::isOn()) refreshVisual(); // tracker-mini-ce: Visual
 
     undoRedoButtonReleaseBlocker = 1;
 
@@ -369,6 +379,12 @@ void cPatternEditor::stop()
     refreshLastUsedInstrument();
 
     undoRedoOpen = 0; // na wszelki
+
+    if (visualCanvas >= 0) // tracker-mini-ce: Visual
+    {
+        display.destroyControl(visualCanvas);
+        visualCanvas = -1;
+    }
 
     if (sequencer.isPlayingSelectionLooped())
     {
@@ -2034,6 +2050,7 @@ void functEncoder(int16_t value)
             case 2: PTE->changeActualPatternEditStep(value); break;
             case cPatternEditor::kTrackLengthPlace: PTE->changeTrackLength(value); break;
             case cPatternEditor::kGeneratePlace: PTE->changeGenerateAlgorithm(value); break;
+            case cPatternEditor::kVisualPlace: PTE->changeVisualStyle(value); break;
             case 5:
             case 6: functUndoRedoOnLeftRight(value); break;
         }
@@ -4142,6 +4159,74 @@ void cPatternEditor::changeGenerateAlgorithm(int16_t value)
 }
 
 // ##############################################################################################
+// ###############################            Visual            #################################
+// ##############################################################################################
+// More, More, button 7: tap = Visual on / off, hold + turn = its style.
+static void functVisual(uint8_t state)
+{
+    if (state == buttonPress)
+    {
+        PTE->selectedPlace = cPatternEditor::kVisualPlace;
+        PTE->visualTurned = false;
+        PTE->showVisualLabel(true);
+        display.synchronizeRefresh();
+    }
+    else if (state == buttonRelease)
+    {
+        if (PTE->selectedPlace != cPatternEditor::kVisualPlace)
+            return;
+        PTE->selectedPlace = -1;
+        if (!PTE->visualTurned)
+        {
+            ceVis::setOn(!ceVis::isOn());
+        }
+        PTE->showVisualLabel(false);
+        PTE->refreshVisual();
+        display.synchronizeRefresh();
+    }
+}
+
+void cPatternEditor::changeVisualStyle(int16_t value)
+{
+    ceVis::changeStyle(value);
+    visualTurned = true;
+    showVisualLabel(true);
+}
+
+// show or hide the canvas over the grid. It exists only while Visual is on and the
+// Pattern screen is open (the display has room for 65 controls in all).
+void cPatternEditor::refreshVisual()
+{
+    if (ceVis::isOn() && moduleRefresh)
+    {
+        if (visualCanvas < 0)
+        {
+            static cCeCanvas::Painter visualPainter = { ceVis::paint, 0 };
+            strControlProperties vprop;
+            vprop.x = 0;
+            vprop.y = mtConfig.general.patternInfo != 0 ? 0 : 28;
+            vprop.w = 800;
+            vprop.h = mtConfig.general.patternInfo != 0 ? 423 : 395;
+            vprop.style = controlStyleShow;
+            vprop.value = 0;
+            vprop.data = &visualPainter;
+            visualCanvas = display.createControl<cCeCanvas>(&vprop);
+        }
+        if (visualCanvas >= 0)
+        {
+            display.setControlShow(visualCanvas);
+            display.refreshControl(visualCanvas);
+        }
+    }
+    else if (visualCanvas >= 0)
+    {
+        display.destroyControl(visualCanvas);
+        visualCanvas = -1;
+        if (moduleRefresh) refreshPattern();
+    }
+}
+
+// ##############################################################################################
 // ###############################       Duplicate pattern      #################################
 // ##############################################################################################
 static void functDuplicatePattern()
@@ -5357,6 +5442,7 @@ void cPatternEditor::setActionButtonPage3Funct()
         ip->setButtonObj(interfaceButton4, buttonPress, functCopyToNew);
     if (editMode)
         ip->setButtonObj(interfaceButton5, functGenerate);
+    ip->setButtonObj(interfaceButton6, functVisual);
 
     ip->setButtonObj(interfaceButton7, buttonPress, functNextActionButtonPage);
 }

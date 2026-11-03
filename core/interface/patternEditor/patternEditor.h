@@ -269,6 +269,12 @@ class cPatternEditor : public ModuleBase
     void changeGenerateAlgorithm(int16_t value);
     void showGenerateLabel(bool held);
     bool isShiftPressed() { return buttons->isButtonPressed(interfaceButtonShift); }
+    static constexpr int8_t kVisualPlace = 12; // "Visual" held (page 3, button 7)
+    hControl visualCanvas = -1;
+    bool visualTurned = false;
+    void changeVisualStyle(int16_t value);
+    void showVisualLabel(bool held);
+    void refreshVisual();
     bool undoRedoOpen = 0;     // true jesli operujemy jogiem na undoRedo
 
     // parametry
