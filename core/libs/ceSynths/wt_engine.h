@@ -703,7 +703,7 @@ static inline float limit(float x)
  * Amt x the source to the destination, per block, in the destination's units below. */
 enum { SRC_AMP_ENV, SRC_FILTER_ENV, SRC_MOD_ENV, SRC_LFO1, SRC_LFO2, SRC_VELOCITY, SRC_KEY, MOD_SRCS };
 enum { DST_POSITION, DST_POSITION1, DST_POSITION2, DST_PITCH, DST_PITCH1, DST_PITCH2, DST_MIX, DST_CUTOFF,
-       DST_RESONANCE, DST_VOLUME, DST_NOISE, MOD_DESTS };
+       DST_RESONANCE, DST_VOLUME, DST_NOISE, DST_DRIVE, MOD_DESTS };   /* Drive: GRIT's only (WAVE's lists stop at Noise) */
 #define MOD_SLOTS           6u
 #define MOD_SEMITONES       12.0f           /* Pitch: 100 % is an octave */
 #define MOD_OCTAVES         4.0f            /* Cutoff: 100 % is 4 octaves */
@@ -720,8 +720,105 @@ static void mod_matrix(float *m, const float *src, const float *p)
     }
 }
 
-/* `tempo`: the render context's BPM (for synced LFOs) */
-static void wt_voice_render(struct wt_voice *e, const float *p, float *out, float tempo)
+/* ---- GRIT: WAVE's voice with a waveshaper (an original design, after the published idea
+ * of a "dirty" engine: oscillators, then a choice of shapers before or after the filter).
+ *
+ * GRIT's own parameters, per slot (synths.c keeps them in the late RAM block):
+ *   type   Shaper (40): 0 Off, 1 Saturate, 2 Overdrive, 3 Diode, 4 Fuzz, 5 Asymmetric,
+ *          6 Fold (sine wavefolder), 7 Rectify, 8 Bitcrush, 9 Redux (sample-rate
+ *          reduction), 10 Crush+Redux
+ *   route  Routing (62): 0 before the filter, 1 after it (before the amp envelope)
+ *   bias   Bias (63): -1..1, an offset into the shaper (asymmetry, odd/even harmonics)
+ *   mix    Grit Mix (64): 0..1, dry to shaped
+ *   level  Level (65): 0..1 -> x0..x2 on the shaped signal
+ * and WAVE's Drive (38) as the shaper's input gain, 0..100 % -> +0..+30 dB (the Mod Matrix
+ * can add to it: destination Drive). Bitcrush takes 12 bits down to 2 over the same range,
+ * Redux holds each sample for 1..48 samples. After the waveshapers (not the crushers, whose
+ * steps must stay steps) a one-pole DC blocker (about 10 Hz) takes out the DC that Rectify
+ * and Bias add. */
+enum { GR_TYPE, GR_ROUTE, GR_BIAS, GR_MIX, GR_LEVEL, GR_PARAMS };
+enum { SH_OFF, SH_SATURATE, SH_OVERDRIVE, SH_DIODE, SH_FUZZ, SH_ASYM, SH_FOLD, SH_RECTIFY, SH_CRUSH,
+       SH_REDUX, SH_CRUSH_REDUX, SHAPERS };
+struct grit_vstate { float dc_x, dc_y, hold; uint32_t count; };
+#define GR_DRIVE_OCTAVES    5.0f            /* Drive 100 %: x32 (+30 dB) into the shaper */
+#define GR_REF              0.35f           /* a held note's peak (as WAVE's Drive) */
+#define GR_DC_COEF          0.99857f        /* 1 - 2 pi 10 Hz / 44.1 kHz */
+
+static inline float absf(float x) { return x < 0.0f ? -x : x; }
+
+/* sin(pi/2 x) folded: x wraps into -1..1 by reflection, then a 5th-order sine */
+static inline float fold(float x)
+{
+    float t = x * 0.25f + 0.25f;            /* phase, in quarter turns */
+    t -= (float)(int32_t)(t >= 0.0f ? t : t - 1.0f);    /* 0..1 */
+    float y = t < 0.5f ? 4.0f * t - 1.0f : 3.0f - 4.0f * t;   /* triangle -1..1 */
+    float y2 = y * y;                       /* sin(pi/2 y), max error 0.4 % */
+    return y * (1.5707963f - y2 * (0.6459640f - y2 * 0.0796926f));
+}
+
+static inline float shape(uint32_t type, float u)
+{
+    switch (type) {
+    case SH_SATURATE:  return sat(u);
+    case SH_OVERDRIVE: { float c = clampf(u, -1.5f, 1.5f); return c - c * c * c * (4.0f / 27.0f); }
+    case SH_DIODE:     return u > 0.0f ? sat(u) : sat(0.25f * u);
+    case SH_FUZZ:      { float c = u * 3.0f; return c / (1.0f + absf(c)) * 1.2f; }
+    case SH_ASYM:      return u > 0.0f ? sat(u) : clampf(u, -0.4f, 0.0f) * 2.0f;
+    case SH_FOLD:      return fold(u);
+    case SH_RECTIFY:   return sat(absf(u)) * 1.4f - 0.5f;
+    default:           return u;
+    }
+}
+
+/* the shaper on a block, in place: p is WAVE's copy (Drive), g GRIT's own, md the Mod
+ * Matrix's Drive */
+static void grit_block(float *x, const float *p, const float *g, float md, struct grit_vstate *v)
+{
+    uint32_t type = list_pick(g[GR_TYPE], SHAPERS);
+    if (type == SH_OFF)
+        return;
+    float drive = clampf(clampf(p[WP_DRIVE], 0.0f, 1.0f) + md, 0.0f, 1.0f);
+    float mix = clampf(g[GR_MIX], 0.0f, 1.0f), level = clampf(g[GR_LEVEL], 0.0f, 1.0f) * 2.0f;
+    float bias = clampf(g[GR_BIAS], -1.0f, 1.0f) * 0.5f;
+    float wet = mix * level, dry = 1.0f - mix;
+    float dx = v->dc_x, dy = v->dc_y;
+    if (type >= SH_CRUSH) {
+        float steps = exp2f_fast(12.0f - drive * 10.0f) * (1.0f / GR_REF);  /* 2^12 .. 2^2 per GR_REF */
+        uint32_t hold = 1u + (uint32_t)(drive * 47.0f);
+        int crush = type != SH_REDUX, redux = type != SH_CRUSH;
+        float h = v->hold;
+        uint32_t cnt = v->count;
+        for (uint32_t n = 0; n < WT_BLOCK; n++) {
+            float in = x[n];
+            if (!redux || cnt == 0) {
+                float u = in + bias * GR_REF;
+                h = crush ? (float)(int32_t)(u * steps + (u >= 0.0f ? 0.5f : -0.5f)) / steps : u;
+            }
+            if (redux && ++cnt >= hold)
+                cnt = 0;
+            x[n] = dry * in + mix * h * level;  /* no DC blocker: the steps stay steps */
+        }
+        v->hold = h;
+        v->count = cnt;
+    } else {
+        float gain = exp2f_fast(drive * GR_DRIVE_OCTAVES) * (1.0f / GR_REF);
+        for (uint32_t n = 0; n < WT_BLOCK; n++) {
+            float in = x[n];
+            float y = shape(type, in * gain + bias) * GR_REF;
+            float o = y - dx + GR_DC_COEF * dy;
+            dx = y;
+            dy = o;
+            x[n] = dry * in + wet * o;
+        }
+    }
+    v->dc_x = dx;
+    v->dc_y = dy;
+}
+
+/* `tempo`: the render context's BPM (for synced LFOs). `gp`, `gv`: GRIT's own parameters
+ * and this voice's shaper state, or 0 for a WAVE voice. */
+static void wt_voice_render(struct wt_voice *e, const float *p, float *out, float tempo,
+                            const float *gp, struct grit_vstate *gv)
 {
     float a0 = e->aenv.level;
     if (e->aenv.stage == ENV_IDLE) {        /* idle: silence, nearly free; Free Running LFOs run on */
@@ -802,7 +899,10 @@ static void wt_voice_render(struct wt_voice *e, const float *p, float *out, floa
         }
         e->noise = nz;
     }
-    float drive = clampf(p[WP_DRIVE], 0.0f, 1.0f);
+    int grit_post = gp && gv && list_pick(gp[GR_ROUTE], 2) == 1;
+    if (gp && gv && !grit_post)
+        grit_block(out, p, gp, m[DST_DRIVE], gv);
+    float drive = gp ? 0.0f : clampf(p[WP_DRIVE], 0.0f, 1.0f);
     if (drive > 0.0f) {                     /* Drive: the filter's input through the soft clip */
         float dg = exp2f_fast(drive * DRIVE_OCTAVES);
         float mk = DRIVE_REF / sat(DRIVE_REF * dg);
@@ -810,6 +910,11 @@ static void wt_voice_render(struct wt_voice *e, const float *p, float *out, floa
             out[n] = sat(out[n] * dg) * mk;
     }
     float ic[4] = {e->ic[0], e->ic[1], e->ic[2], e->ic[3]};
+    float amp_saved = amp, damp_saved = damp;
+    if (grit_post) {                        /* the filter at unity gain first */
+        amp = 1.0f;
+        damp = 0.0f;
+    }
     if (type & F_LADDER) {
         for (uint32_t n = 0; n < WT_BLOCK; n++) {
             out[n] = limit(ladder_run(&lad, ic, out[n]) * amp);
@@ -830,6 +935,14 @@ static void wt_voice_render(struct wt_voice *e, const float *p, float *out, floa
         for (uint32_t n = 0; n < WT_BLOCK; n++) {
             out[n] = limit(svf_run(&f2, &ic[0], out[n]) * amp);
             amp += damp;
+        }
+    }
+    if (grit_post) {                        /* GRIT after the filter, then the amp envelope */
+        grit_block(out, p, gp, m[DST_DRIVE], gv);
+        amp = amp_saved;
+        for (uint32_t n = 0; n < WT_BLOCK; n++) {
+            out[n] = limit(out[n] * amp);
+            amp += damp_saved;
         }
     }
     e->pos[0] = clampf(o[0].pos + o[0].dpos * (float)WT_BLOCK, 0.0f, (float)(WT_FRAMES - 1));

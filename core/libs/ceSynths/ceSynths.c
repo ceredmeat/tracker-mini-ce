@@ -16,9 +16,15 @@
 _Static_assert(WT_PARAMS == CESYN_ENGINE_PARAMS, "WAVE's parameter count");
 _Static_assert(PH_PARAMS == CESYN_ENGINE_PARAMS, "PHASE's parameter count");
 
+struct cesyn_grit {
+    struct wt_voice wave; /* first: the WAVE calls take it as a struct wt_voice */
+    struct grit_vstate gv;
+};
+
 union cesyn_any {
     struct wt_voice wave;
     struct ph_voice phase;
+    struct cesyn_grit grit;
 };
 
 size_t cesyn_voice_size(void)
@@ -78,12 +84,29 @@ int cesyn_sounding(const void* voice, int engine)
     return wt_voice_sounding((const struct wt_voice*)voice);
 }
 
-void cesyn_render(void* voice, int engine, const float* p, float* out, float tempo)
+void cesyn_render(void* voice, int engine, const float* p, float* out, float tempo,
+                  const float* grit)
 {
     if (engine == CESYN_PHASE)
+    {
         ph_voice_render((struct ph_voice*)voice, p, out, tempo);
+    }
+    else if (engine == CESYN_GRIT)
+    {
+        struct cesyn_grit* g = (struct cesyn_grit*)voice;
+        float q[WT_PARAMS];
+        memcpy(q, p, sizeof q);
+        float gp[GR_PARAMS];
+        gp[GR_TYPE] = q[WP_DIGITAL]; /* GRIT's Shaper sits where WAVE's Digital is */
+        q[WP_DIGITAL] = 0.0f;
+        for (uint32_t k = 0; k < GR_PARAMS - 1u; k++)
+            gp[GR_ROUTE + k] = grit[k];
+        wt_voice_render(&g->wave, q, out, tempo, gp, &g->gv);
+    }
     else
-        wt_voice_render((struct wt_voice*)voice, p, out, tempo);
+    {
+        wt_voice_render((struct wt_voice*)voice, p, out, tempo, 0, 0);
+    }
 }
 
 size_t cesyn_fx_size(void)

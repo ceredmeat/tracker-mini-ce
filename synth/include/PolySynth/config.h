@@ -42,7 +42,8 @@ enum class InstrumentTypeId
     kChiptuneSynth,
     kWaveSynth,  // tracker-mini-ce: WAVE
     kPhaseSynth, // tracker-mini-ce: PHASE
-    kLastSynth = kPhaseSynth,
+    kGritSynth,  // tracker-mini-ce: GRIT
+    kLastSynth = kGritSynth,
     kDelay = 1000,
     kReverb,
 };

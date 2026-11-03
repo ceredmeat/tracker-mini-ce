@@ -79,6 +79,8 @@
 #include "images/wave_med_108x40_L2.h"
 #include "images/phase_mini_nomark_80x28_L2.h"
 #include "images/phase_med_108x40_L2.h"
+#include "images/grit_mini_nomark_80x28_L2.h"
+#include "images/grit_med_108x40_L2.h"
 
 #endif
 
@@ -217,6 +219,8 @@ const strBitmap bitmaps[displayBitmapsCount] = {
     { wave_med_108x40_L2, 129400, 1080, 108, 40, L2, 27 },
     { phase_mini_nomark_80x28_L2, 130500, 560, 80, 28, L2, 20 },
     { phase_med_108x40_L2, 131100, 1080, 108, 40, L2, 27 },
+    { grit_mini_nomark_80x28_L2, 132200, 560, 80, 28, L2, 20 },
+    { grit_med_108x40_L2, 132800, 1080, 108, 40, L2, 27 },
 
 #endif
 };

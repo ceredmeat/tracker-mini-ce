@@ -37,6 +37,7 @@ void InstrumentTypeRegistry::registerInstrumentTypes(
     // tracker-mini-ce
     registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kWaveSynth), createWaveSynth());
     registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kPhaseSynth), createPhaseSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kGritSynth), createGritSynth());
 }
 
 } // namespace polysynth

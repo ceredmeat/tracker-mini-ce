@@ -20,6 +20,8 @@ enum
 {
     CESYN_WAVE = 0,
     CESYN_PHASE = 1,
+    CESYN_GRIT = 2, // WAVE's voice through a waveshaper; p[26] is the Shaper (no Digital),
+                    // p[58] the Pre Gain, and grit[] the Routing, Bias, Grit Mix and Level
 };
 
 size_t cesyn_voice_size(void);
@@ -28,7 +30,8 @@ void cesyn_note_on(void* voice, int engine, const float* p, int note, float velo
 void cesyn_note_off(void* voice, int engine);
 void cesyn_set_bend(void* voice, int engine, float semitones);
 int cesyn_sounding(const void* voice, int engine);
-void cesyn_render(void* voice, int engine, const float* p, float* out, float tempo);
+void cesyn_render(void* voice, int engine, const float* p, float* out, float tempo,
+                  const float* grit);
 
 // the chorus (one per synth slot): fx[4] = effect (0 none, 1 chorus), rate, depth, mix;
 // L is the mono input, L and R the output
