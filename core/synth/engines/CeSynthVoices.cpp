@@ -96,12 +96,6 @@ const char* const kWaveDests[] = { "Position", "Position 1", "Position 2", "Pitc
 const char* const kShapes[] = { "Saw", "Square", "Pulse", "Double Sine", "Saw-Pulse", "Reso I", "Reso II", "Reso III" };
 const char* const kPairs[] = { "Off",       "Saw",    "Square",  "Pulse",   "Double Sine",
                                "Saw-Pulse", "Reso I", "Reso II", "Reso III" };
-// GRIT
-const char* const kShapers[] = { "Off",        "Saturate", "Overdrive", "Diode",    "Fuzz",       "Asymmetric",
-                                 "Fold",       "Rectify",  "Bitcrush",  "Redux",    "Crush+Redux" };
-const char* const kRoutes[] = { "Pre Filter", "Post Filter" };
-const char* const kGritDests[] = { "Position", "Position 1", "Position 2", "Pitch",  "Pitch 1", "Pitch 2",
-                                   "Mix",      "Cutoff",     "Resonance",  "Volume", "Noise",   "Drive" };
 const char* const kPhaseSrcs[] = { "DCA Env", "DCW Env", "DCO Env", "LFO 1", "LFO 2", "Velocity", "Key" };
 const char* const kPhaseDests[] = { "Pitch", "Pitch 1", "Pitch 2", "DCW", "DCW 1", "DCW 2", "Mix", "Volume", "Detune" };
 
@@ -248,24 +242,6 @@ std::array<Def, kParamCount> makePhaseDefs()
     return d;
 }
 
-std::array<Def, kParamCount> makeGritDefs()
-{
-    std::array<Def, kParamCount> d = makeWaveDefs();
-    d[26] = { "Shaper", 1.0f, 0.0f, 10.0f, LIST(kShapers) }; // in place of WAVE's Digital
-    d[58] = { "Pre Gain", 0.4f, 0.0f, 1.0f, Fmt::kPercent };
-    for (int s = 0; s < 6; s++)
-    {
-        d[41 + 3 * s].hi = 11.0f; // the matrix gains a Drive destination
-        d[41 + 3 * s].list = kGritDests;
-        d[41 + 3 * s].aux = static_cast<uint8_t>(std::size(kGritDests));
-    }
-    d[61] = { "Routing", 0.0f, 0.0f, 1.0f, LIST(kRoutes) };
-    d[62] = { "Bias", 0.0f, -1.0f, 1.0f, Fmt::kSignedPercent };
-    d[63] = { "Grit Mix", 1.0f, 0.0f, 1.0f, Fmt::kPercent };
-    d[64] = { "Level", 0.5f, 0.0f, 1.0f, Fmt::kPercent };
-    return d;
-}
-
 #undef LIST
 
 std::function<std::string(const Patch&, Patch::paramvalue_t)> makeFormatter(const Def& d)
@@ -324,12 +300,12 @@ class CeSynthVoice : public sdk::CustomSynthVoice<CeSynthVoice<Engine>, CeParamI
     {
         engine.reset(new uint8_t[cesyn_voice_size()]);
         cesyn_voice_init(engine.get(), Engine);
-        const auto& defs = engineDefs();
+        const auto& defs = Engine == CESYN_PHASE ? phaseDefs() : waveDefs();
         for (int k = 0; k < kParamCount; k++)
         {
             p[k] = defs[k].def;
         }
-        if (voiceIdx == 0 && Engine != CESYN_GRIT) // the chorus runs on the mixdown, on voice 0
+        if (voiceIdx == 0) // the chorus runs on the mixdown, on voice 0
         {
             fx.reset(new uint8_t[cesyn_fx_size()]);
             cesyn_fx_init(fx.get());
@@ -361,8 +337,7 @@ class CeSynthVoice : public sdk::CustomSynthVoice<CeSynthVoice<Engine>, CeParamI
         cesyn_set_bend(engine.get(), Engine, this->pitchBendSemitones);
         if (left.size() == kBlock)
         {
-            cesyn_render(engine.get(), Engine, p, left.data(), ctx.tempo,
-                         Engine == CESYN_GRIT ? &p[61] : nullptr);
+            cesyn_render(engine.get(), Engine, p, left.data(), ctx.tempo);
         }
         else
         {
@@ -406,24 +381,7 @@ class CeSynthVoice : public sdk::CustomSynthVoice<CeSynthVoice<Engine>, CeParamI
             return v;
         };
 
-        if (Engine == CESYN_GRIT)
-        {
-            metadata.layoutFlat.sections = {
-                EditorSection{ .name = "Oscillator", .shortName = "Osc",
-                               .elements = elems({ 2, 0, 5, 9, 3, 1, 6, 10, 4, 7, 8, 27, 23, 24 }) },
-                EditorSection{ .name = "Shaper", .shortName = "Shaper",
-                               .elements = elems({ 26, 58, 61, 62, 63, 64 }) },
-                EditorSection{ .name = "Filter", .shortName = "Filter",
-                               .elements = elems({ 11, 12, 13, 14, 25, 15, 16, 17, 18 }) },
-                EditorSection{ .name = "Amp Envelope", .shortName = "Amp",
-                               .elements = elems({ 19, 20, 21, 22 }) },
-                EditorSection{ .name = "Modulation", .shortName = "Mod",
-                               .elements = elems({ 28, 29, 30, 31, 32, 33, 34, 35, 59, 36, 37, 38, 39, 60 }) },
-                EditorSection{ .name = "Modulation Matrix", .shortName = "Matrix",
-                               .elements = elems({ 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57 }) },
-            };
-        }
-        else if (Engine == CESYN_PHASE)
+        if (Engine == CESYN_PHASE)
         {
             metadata.layoutFlat.sections = {
                 EditorSection{ .name = "Oscillator", .shortName = "DCO",
@@ -459,20 +417,7 @@ class CeSynthVoice : public sdk::CustomSynthVoice<CeSynthVoice<Engine>, CeParamI
         }
         metadata.layout23 = metadata.layoutFlat;
 
-        if (Engine == CESYN_GRIT)
-        {
-            metadata.initDefaultMacros = [](std::vector<Patch::Metadata::Macro>& macros)
-            {
-                macros[0] = { .displayName = "Pre Gain", .modifiers = { { 58, 0.5f } } };
-                macros[1] = { .displayName = "Grit Mix", .modifiers = { { 63, 0.5f } } };
-                macros[2] = { .displayName = "Bias", .modifiers = { { 62, 0.5f } }, .bipolar = true };
-                macros[3] = { .displayName = "Cutoff", .modifiers = { { 12, 1.0f } }, .bipolar = true };
-                macros[4] = { .displayName = "Resonance", .modifiers = { { 13, 0.5f } } };
-                macros[5] = { .displayName = "Wave Position", .modifiers = { { 0, 1.0f }, { 1, 1.0f } } };
-            };
-            metadata.instrumentTypeId = static_cast<int>(InstrumentTypeId::kGritSynth);
-        }
-        else if (Engine == CESYN_PHASE)
+        if (Engine == CESYN_PHASE)
         {
             metadata.initDefaultMacros = [](std::vector<Patch::Metadata::Macro>& macros)
             {
@@ -526,7 +471,7 @@ class CeSynthVoice : public sdk::CustomSynthVoice<CeSynthVoice<Engine>, CeParamI
 
     static Patch::Metadata::Param makeParam(int id)
     {
-        const Def& d = engineDefs()[id];
+        const Def& d = (Engine == CESYN_PHASE ? phaseDefs() : waveDefs())[id];
         return Patch::Metadata::Param{
             .displayName = d.name,
             .defaultValue = d.def,
@@ -537,20 +482,6 @@ class CeSynthVoice : public sdk::CustomSynthVoice<CeSynthVoice<Engine>, CeParamI
             .isEnum = d.fmt == Fmt::kList,
             .valueFormatter = makeFormatter(d),
         };
-    }
-
-    static const std::array<Def, kParamCount>& engineDefs()
-    {
-        if (Engine == CESYN_PHASE)
-        {
-            return phaseDefs();
-        }
-        if (Engine == CESYN_GRIT)
-        {
-            static const std::array<Def, kParamCount> defs = makeGritDefs();
-            return defs;
-        }
-        return waveDefs();
     }
 
     static const std::array<Def, kParamCount>& waveDefs()
@@ -571,15 +502,6 @@ class CeSynthVoice : public sdk::CustomSynthVoice<CeSynthVoice<Engine>, CeParamI
 };
 
 } // namespace
-
-std::unique_ptr<InstrumentType> createGritSynth()
-{
-    return std::make_unique<InstrumentType>(InstrumentType{
-      .name = "GRIT",
-      .createMetadata = &CeSynthVoice<CESYN_GRIT>::createMetadata,
-      .createVoice = [](int voiceIdx) -> std::unique_ptr<InstrumentVoice>
-      { return std::make_unique<CeSynthVoice<CESYN_GRIT>>(voiceIdx); } });
-}
 
 std::unique_ptr<InstrumentType> createWaveSynth()
 {

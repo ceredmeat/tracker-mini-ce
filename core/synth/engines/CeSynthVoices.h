@@ -11,5 +11,4 @@ namespace polysynth
 {
 std::unique_ptr<InstrumentType> createWaveSynth();
 std::unique_ptr<InstrumentType> createPhaseSynth();
-std::unique_ptr<InstrumentType> createGritSynth();
 } // namespace polysynth
