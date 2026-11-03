@@ -3,6 +3,9 @@
 #include "lp_engine.h"
 
 #include <new>
+
+#include "clouds/resources.h"
+#include "stmlib/dsp/dsp.h"
 #include <string.h>
 
 namespace lp
@@ -1057,7 +1060,13 @@ void Engine::renderTrack(int ti, const float* inL, const float* inR, float* outL
     }
     if (wrote) t.version++;
 
-    if (useGrains) renderGrains(t, ti, kBlock, centers, outL, outR);
+    if (useGrains)
+    {
+        if (t.mode == kModeGranular)
+            renderCloudGrains(t, kBlock, centers, outL, outR);
+        else
+            renderGrains(t, ti, kBlock, centers, outL, outR);
+    }
 
     // ---- filters: perf low/high-pass and sweeps, then the DJ filter ----
     bool lpOn = ((act >> kPfLowPass) & 1) || ((act >> kPfSweepDown) & 1);
@@ -1276,6 +1285,147 @@ void Engine::renderGrains(Track& t, int ti, int n, const pos_t* centers, float* 
         const Grain& g = t.grains[k];
         t.drawGrainPos[k] = g.on ? (float)(g.pos >> kFrac) : -1.0f;
         t.drawGrainAmp[k] = g.on ? hann((float)g.age / g.len) : 0.0f;
+    }
+}
+
+// Granular playback: Mutable Instruments Clouds' grain scheduling, window and level
+// normalisation (granular_sample_player.h / grain.h, MIT), reading the loop around its
+// playhead instead of a record buffer: up to eight grains per track.
+void Engine::renderCloudGrains(Track& t, int n, const pos_t* centers, float* outL, float* outR)
+{
+    const GrainParams& gp = t.grain;
+    const int maxGrains = kMaxGrains;
+    pos_t L = (pos_t)t.len << kFrac;
+    float density = gp.density * 0.01f;
+    float texture = gp.texture * 0.01f;
+    bool deterministic = density < 0.5f;
+    float overlap = 0.0f;
+    if (density >= 0.53f)
+        overlap = (density - 0.53f) * 2.12f;
+    else if (density <= 0.47f)
+        overlap = (0.47f - density) * 2.12f;
+    float windowShape = texture < 0.75f ? texture * 1.333f : 1.0f;
+    float o3 = overlap * overlap * overlap;
+    float target = maxGrains * o3;
+    float p = target / t.grainSizeHint;
+    float space = target > 0 ? t.grainSizeHint / target : 1e9f;
+    if (deterministic)
+        p = -1.0f;
+    else
+        t.grainPhasor = -1000.0f;
+
+    float ms = 20.0f * powf(25.0f, gp.size * 0.01f);
+    float grainSize = ms * kSampleRate / 1000.0f;
+    if (grainSize > (float)t.len * 0.5f) grainSize = (float)t.len * 0.5f;
+    float pitch = powf(2.0f, gp.pitch / 12.0f);
+    if (t.tempoOpt == kTempoTape) pitch *= (float)speed_ / (float)kOne;
+    int rn = granularRate(gp);
+    int dirSign = (rn < 0 || (gp.direction == 2 && t.pingRev)) ? -1 : 1;
+    float s = gp.spread * 0.01f;
+    float maxSpread = kSampleRate < (float)t.len / 4 ? kSampleRate : (float)t.len / 4;
+    float spreadFrames = s * s * maxSpread;
+
+    int available = 0;
+    for (int k = 0; k < maxGrains; k++)
+        if (!t.grains[k].on) available++;
+
+    for (int i = 0; i < n; i++)
+    {
+        t.grainPhasor += 1.0f;
+        bool seedP = rng_.uni() < p && target > t.grainCount;
+        bool seedD = t.grainPhasor >= space;
+        if ((seedP || seedD) && available > 0)
+        {
+            Grain* g = nullptr;
+            for (int k = 0; k < maxGrains; k++)
+                if (!t.grains[k].on)
+                {
+                    g = &t.grains[k];
+                    break;
+                }
+            if (g)
+            {
+                available--;
+                int width = (int)grainSize & ~1;
+                if (width < 32) width = 32;
+                g->on = true;
+                g->age = 0;
+                g->len = width;
+                g->step = (pos_t)(pitch * 65536.0f) * dirSign;
+                pos_t start = centers[i];
+                if (spreadFrames > 0) start += (pos_t)(rng_.bi() * spreadFrames * 65536.0f);
+                // centred on the playhead: start half a grain's read earlier
+                start -= (pos_t)(width * pitch * 0.5f * 65536.0f) * dirSign;
+                g->pos = wrapP(start, L);
+                float pan = 0.5f + s * (rng_.uni() - 0.5f);
+                if (pan < 0.5f)
+                {
+                    g->gainL = 1.0f;
+                    g->gainR = 2.0f * pan;
+                }
+                else
+                {
+                    g->gainR = 1.0f;
+                    g->gainL = 2.0f * (1.0f - pan);
+                }
+                g->envPhase = 0.0f;
+                g->envInc = 2.0f / (float)width;
+                if (windowShape >= 0.5f)
+                {
+                    g->smooth = (windowShape - 0.5f) * 2.0f;
+                    g->slope = 0.0f;
+                }
+                else
+                {
+                    g->smooth = 0.0f;
+                    g->slope = 0.5f / (windowShape + 0.01f);
+                }
+                t.grainSizeHint += 0.1f * (grainSize - t.grainSizeHint);
+                t.grainPhasor = 0.0f;
+            }
+        }
+
+        float l = 0, r = 0;
+        int active = 0;
+        for (int k = 0; k < maxGrains; k++)
+        {
+            Grain& g = t.grains[k];
+            if (!g.on) continue;
+            float e = g.envPhase >= 1.0f ? 2.0f - g.envPhase : g.envPhase;
+            if (g.smooth > 0.0f)
+                e += g.smooth * (stmlib::Interpolate(clouds::lut_window, e < 0.9999f ? e : 0.9999f, 4096.0f) - e);
+            else
+            {
+                e *= g.slope;
+                if (e > 1.0f) e = 1.0f;
+            }
+            float a, b;
+            readFrame(t, g.pos, a, b);
+            a *= e;
+            b *= e;
+            l += a * g.gainL + b * (1.0f - g.gainR);
+            r += b * g.gainR + a * (1.0f - g.gainL);
+            g.amp = e;
+            g.pos = wrapP(g.pos + g.step, L);
+            g.envPhase += g.envInc;
+            if (g.envPhase >= 2.0f) g.on = false;
+            active++;
+        }
+        // level: about the same whatever the number of grains
+        float d = (float)active - t.grainCount;
+        t.grainCount += d * (d > 0 ? 0.9f : 0.2f) * (1.0f / 32.0f);
+        float norm = t.grainCount > 2.0f ? 1.0f / sqrtf(t.grainCount - 1.0f) : 1.0f;
+        float wg = clampf(1.0f + 2.0f * windowShape, 1.0f, 2.0f);
+        norm *= lerpf(1.0f, wg, overlap);
+        t.grainNorm += 0.01f * (norm - t.grainNorm);
+        outL[i] = l * t.grainNorm;
+        outR[i] = r * t.grainNorm;
+    }
+    for (int k = 0; k < kMaxGrains; k++)
+    {
+        const Grain& g = t.grains[k];
+        t.drawGrainPos[k] = g.on ? (float)(g.pos >> kFrac) : -1.0f;
+        t.drawGrainAmp[k] = g.on ? g.amp : 0.0f;
     }
 }
 

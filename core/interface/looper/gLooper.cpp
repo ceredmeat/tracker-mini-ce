@@ -501,16 +501,23 @@ void cLooper::keyText(int k, const char*& name, char* v, int vn, uint8_t& fl)
             if (bar == kBarGrain)
             {
                 GrainParams& g = t.grain;
-                static const int8_t knobOf[8] = {0, 1, 2, 3, -1, 4, 5, -1};
+                static const int8_t knobOf[8] = {0, 1, 2, 3, -1, 4, 5, 6};
                 switch (k)
                 {
                     case 0: name = "SPREAD"; snprintf(v, vn, "%d %%", g.spread); break;
                     case 1: name = "SIZE"; snprintf(v, vn, "%d ms", (int)(20.0f * powf(25.0f, g.size * 0.01f))); break;
-                    case 2: name = "DENSITY"; snprintf(v, vn, "%d", g.density); break;
+                    case 2:
+                        name = "DENSITY";
+                        if (g.density > 47 && g.density < 53)
+                            snprintf(v, vn, "None");
+                        else
+                            snprintf(v, vn, "%s %d", g.density < 50 ? "Even" : "Rand", g.density < 50 ? (50 - g.density) * 2 : (g.density - 50) * 2);
+                        break;
                     case 3: name = "PITCH"; snprintf(v, vn, "%+d st", g.pitch); break;
                     case 4: name = "GRAINS"; snprintf(v, vn, "Close"); break;
                     case 5: name = "SPEED"; snprintf(v, vn, "%s", kSpeedNames[g.speed]); break;
                     case 6: name = "DIRECTION"; snprintf(v, vn, "%s", kDirNames[g.direction]); break;
+                    case 7: name = "TEXTURE"; snprintf(v, vn, "%d %%", g.texture); break;
                 }
                 if (knobOf[k] >= 0 && knobOf[k] == grainKnob) fl = kKfLit | kKfLine;
                 return;
@@ -655,7 +662,9 @@ void cLooper::keyText(int k, const char*& name, char* v, int vn, uint8_t& fl)
                 case 3:
                 case 4:
                 {
-                    int kn = k - 1 + ((shift && d.knobs > 4) ? 4 : 0);
+                    int base = (fxKnob < d.knobs ? fxKnob / 4 : 0) * 4;
+                    if (shift) base = (base + 4 < d.knobs) ? base + 4 : 0;
+                    int kn = base + k - 1;
                     if (kn < d.knobs)
                     {
                         name = d.knobName[kn];
@@ -667,7 +676,7 @@ void cLooper::keyText(int k, const char*& name, char* v, int vn, uint8_t& fl)
                 case 5:
                     name = "RETURN";
                     snprintf(v, vn, "%d", engine.fxReturn[fxSlot]);
-                    if (fxKnob == 8) fl = kKfLit | kKfLine;
+                    if (fxKnob == kFxReturnKnob) fl = kKfLit | kKfLine;
                     break;
                 case 6:
                     name = fxSlot ? "FX 1" : "FX 2";
@@ -1010,7 +1019,7 @@ static void paintFx()
 {
     cLooper& L = looper;
     const FxSlot& f = engine.fx[L.fxSlot];
-    char v[32];
+    char v[96];
     snprintf(v, sizeof(v), "FX %d  %s", L.fxSlot + 1, kFxDesc[f.type()].name);
     text(20, 14, 2, 0, v, kWhite);
     int x0 = 40, x1 = 760, y0 = 60, y1 = 330;
@@ -1091,6 +1100,24 @@ static void paintFx()
         }
         case kFxClouds:
         {
+            static const char* const modes[4] = {"Granular", "Stretch", "Looping delay", "Spectral"};
+            static const char* const q[3] = {"Stereo 16-bit, 1.5 s", "Stereo 8-bit, 3 s", "Mono 16-bit, 2 s"};
+            int cy = (y0 + y1) / 2;
+            rect(x0, cy - 30, x1, cy + 30, f.frozen() ? 0x30405A : 0x202020);
+            snprintf(v, sizeof(v), "%s   %s", modes[f.knob[10] & 3], q[f.knob[11] % 3]);
+            text(x0, y0 - 20, 0, 0, v, kGrey);
+            text(x1, y0 - 20, 0, OPT_RIGHTX, f.frozen() ? "Frozen" : "Recording", f.frozen() ? 0x8AA0C8 : kGrey);
+            // where the grains read: Position back from now, Size wide
+            int px = x1 - (int)(f.knob[0] * 0.01f * (x1 - x0) * 0.8f);
+            int w = 4 + (int)(f.knob[1] * 0.01f * (x1 - x0) * 0.15f);
+            API_COLOR_A(150);
+            rect(px - w, cy - 26, px, cy + 26, kYellow);
+            API_COLOR_A(255);
+            text(x0, y1 + 16, 4, 0, "Mutable Instruments Clouds (MIT). Blend 100 = all wet, as a send.", kDim);
+            break;
+        }
+        case kFxGrains:
+        {
             // the record buffer with its grains
             rect(x0, (y0 + y1) / 2 - 30, x1, (y0 + y1) / 2 + 30, f.frozen() ? 0x30405A : 0x202020);
             text(x0, y0 - 20, 0, 0, f.frozen() ? "Frozen" : "Recording", f.frozen() ? 0x8AA0C8 : kGrey);
@@ -1122,16 +1149,22 @@ static void paintFx()
     }
     // knobs as bars over their keys
     const FxDesc& d = kFxDesc[f.type()];
-    int base = (L.shift && d.knobs > 4) ? 4 : 0;
+    int base = (L.fxKnob < d.knobs ? L.fxKnob / 4 : 0) * 4;
+    if (L.shift) base = (base + 4 < d.knobs) ? base + 4 : 0;
     for (int k = 0; k < 4; k++)
     {
         int kn = base + k;
         if (kn >= d.knobs) continue;
         int cx = (k + 1) * 100 + 50;
-        smallBar(cx, 400, f.knob[kn] / 100.0f, kn == L.fxKnob, false);
+        smallBar(cx, 400, f.knob[kn] / (float)FxSlot::knobMax(f.type(), kn), kn == L.fxKnob, false);
     }
-    smallBar(550, 400, engine.fxReturn[L.fxSlot] / 100.0f, L.fxKnob == 8, false);
-    if (d.knobs > 4) text(20, 380, 4, 0, L.shift ? "Shift: knobs 5-8" : "Hold Shift: knobs 5-8", kDim);
+    smallBar(550, 400, engine.fxReturn[L.fxSlot] / 100.0f, L.fxKnob == kFxReturnKnob, false);
+    if (d.knobs > 4)
+    {
+        snprintf(v, sizeof(v), "Knobs %d-%d of %d   Left / Right: all knobs   Shift: next page", base + 1,
+                 base + 4 < d.knobs ? base + 4 : d.knobs, d.knobs);
+        text(20, 380, 4, 0, v, kDim);
+    }
 }
 
 static void listRow(int x, int y, int w, const char* name, const char* value, bool selected)
@@ -1287,16 +1320,17 @@ static const char* const kManual[8][9] = {
     {"Playback modes", "Forward, Reverse, Ping-pong: these can overdub.",
      "Half speed, Double, Half rev, Double rev: tape style.", "Half time: half tempo, same pitch.",
      "Octave up / down: same tempo, other pitch.", "Granular: grains around the playhead. Spread, Size, Density,",
-     "Pitch, Speed (1/2, 1, 2x) and Direction.", "Every mode reads from the bar clock: a track stays in time.", ""},
+     "Pitch, Speed (1/2, 1, 2x), Direction and Texture (Clouds' grains;", "Density: below the middle even, above random, middle silent).",
+     "Every mode reads from the bar clock: a track stays in time."},
     {"Performance mode", "Instr (or Perform, Fn2) toggles it; hold it to use it while held.",
      "Pad columns 5-12: repeat, repeat, low-pass, high-pass,", "sweep down, sweep up, vibrato, tape stop. Hold to play,",
      "Shift + pad to latch. Hold a pad and turn: that track's knob.", "The screen keys play an effect on every track at once;",
-     "hold one and turn for its knob. Column 4: freeze Grains", "(row 1 FX 1, row 2 FX 2).", ""},
+     "hold one and turn for its knob. Column 4: freeze Grains/Clouds", "(row 1 FX 1, row 2 FX 2).", ""},
     {"Mixer and effects", "Master (Fn4): seven strips. Sends to both effects,",
      "a DJ filter (down: low-pass, up: high-pass) and the level.", "FX strips: the first knob, the send into the other slot",
      "(chain), the return. Shift + key: mute. Again: its page.", "Fx / Vol keys: the FX 1 / FX 2 page. TYPE picks one of",
-     "twelve: Delay, Ping-pong, Reverb, Chorus, Flanger, Grains,", "Phaser, Shimmer, Tape echo, Reverse, Prime time, Lo-fi.",
-     "Left / Right pick a knob; the encoder turns it."},
+     "13: Delay, Ping-pong, Reverb, Chorus, Flanger, Grains, Phaser,", "Shimmer, Tape echo, Reverse, Prime time, Lo-fi and Clouds",
+     "(Mutable Instruments'). Left / Right: every knob; encoder turns it."},
     {"Loop editor", "Note: the selected track with start and end markers.",
      "START / END pick a marker, SNAP its steps (bar, beat, 1/16, free).", "TRIM keeps the selection (instant, UNDO puts it back).",
      "CUT removes it and closes up, ERASE silences it (press twice).", "Copy copies the selection, Shift + Copy pastes it at the start",

@@ -20,7 +20,7 @@ static constexpr char kRoot[] = "/Looper";
 static constexpr char kProjects[] = "/Looper/Projects";
 static constexpr char kExport[] = "/Looper/Export";
 static constexpr uint32_t kCfgMagic = 0x4C4F4F50;   // "LOOP"
-static constexpr uint16_t kCfgVersion = 1;
+static constexpr uint16_t kCfgVersion = 2;   // 2: 12 effect knobs, grain texture
 
 static FileSystem* fs() { return TrackerImpl::getInstance()->getPlatform()->getFileSystem(); }
 

@@ -18,24 +18,27 @@ enum FxType : uint8_t
     kFxReverb,
     kFxChorus,
     kFxFlanger,
-    kFxClouds,
+    kFxGrains,      // our own light granular
     kFxPhaser,
     kFxShimmer,
     kFxTape,
     kFxReverse,
     kFxPrime,
     kFxLofi,
+    kFxClouds,      // Mutable Instruments' Clouds (MIT), the original DSP
     kFxTypes
 };
 
-constexpr int kFxKnobs = 8;
+constexpr int kFxKnobs = 12;
+constexpr int kFxReturnKnob = 15;   // the UI's index for the return level
 
 struct FxDesc
 {
     const char* name;
-    uint8_t knobs;                 // 4 or 8 (Clouds)
+    uint8_t knobs;                 // 3 to 12
     const char* knobName[kFxKnobs];
     uint8_t def[kFxKnobs];
+    uint8_t max[kFxKnobs];         // 0 = 100; else a choice (0 .. max)
 };
 
 extern const FxDesc kFxDesc[kFxTypes];
@@ -53,8 +56,10 @@ class FxSlot
 {
   public:
     void init(void* mem, uint32_t bytes);
-    void setType(int type);            // clears the lines (silent for a few blocks)
-    int type() const { return type_; }
+    void setType(int type);            // UI: the audio side switches, clearing the memory first
+    int type() const { return pendingType_; }
+    void prepare();                    // main loop: Clouds' housekeeping (buffers, stretch search)
+    static int knobMax(int type, int k) { return kFxDesc[type].max[k] ? kFxDesc[type].max[k] : 100; }
 
     uint8_t knob[kFxKnobs];
 
@@ -65,10 +70,15 @@ class FxSlot
     float vis[16];
     int visCount = 0;
     float lfo = 0;
-    bool frozen() const { return type_ == kFxClouds && knob[7] >= 50; }
+    bool frozen() const
+    {
+        return (type_ == kFxGrains && knob[7] >= 1) || (type_ == kFxClouds && knob[9] >= 1);
+    }
 
   private:
+    void applyType();
     void clearStep();
+    void procMiClouds(const float* inL, const float* inR, float* outL, float* outR, int n);
     void procDelay(const float* inL, const float* inR, float* outL, float* outR, int n, float barFrames, bool ping, bool tape);
     void procReverb(const float* inL, const float* inR, float* outL, float* outR, int n, bool shimmer);
     void procChorus(const float* inL, const float* inR, float* outL, float* outR, int n, bool flanger);
@@ -79,6 +89,10 @@ class FxSlot
     void procLofi(const float* inL, const float* inR, float* outL, float* outR, int n);
 
     uint8_t type_ = kFxDelay;
+    volatile uint8_t pendingType_ = kFxDelay;
+    volatile bool preparing_ = false;
+    void* clouds_ = nullptr;           // clouds::GranularProcessor, built in the slot's memory
+    uint8_t cloudsMode_ = 255, cloudsQuality_ = 255;
     uint8_t* mem_ = nullptr;
     uint32_t bytes_ = 0;
     uint32_t clearPos_ = 0;

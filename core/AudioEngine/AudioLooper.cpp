@@ -28,6 +28,13 @@ void AudioLooper::begin()
     looperReady = true;
 }
 
+void AudioLooper::mainLoop()
+{
+    if (!looperReady) return;
+    for (int s = 0; s < lp::kFxSlots; s++)
+        lp::engine.fx[s].prepare();
+}
+
 static bool looperBusy()
 {
     if (AudioLooper::screenOpen) return true;

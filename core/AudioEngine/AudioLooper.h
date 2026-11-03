@@ -17,6 +17,7 @@ class AudioLooper : public AudioStream
     virtual void update(void) override;
 
     static void begin();          // sets up the engine's memory (once)
+    static void mainLoop();       // from the main loop: effect housekeeping
     static volatile bool screenOpen;
     static uint8_t* uiScratch();     // 64 KB for the screen (waveform bitmaps, file buffers)
     static constexpr uint32_t kUiScratchBytes = 64u * 1024u;
