@@ -2,6 +2,10 @@
 
 #include "effect_polyverb.h"
 #include "cr_mtb_buffer.h"
+#ifdef PLATFORM_IMX
+#include "ceMasterFx/ceMasterFx.h"
+#include "ceMods.h"
+#endif
 
 extern uint16_t externalRamReverbBuff[];
 #ifdef PLATFORM_IMX
@@ -46,6 +50,36 @@ AUDIO_CORE_RAM void AudioEffectPolyverb::update(void)
         release(block_left);
         return;
     }
+
+#ifdef PLATFORM_IMX
+    // tracker-mini-ce Master FX: the project's reverb choice
+    {
+        cemfx_reverb_params params = { reverb.GetAmount(),    reverb.GetInputGain(),
+                                       reverb.GetTime(),      reverb.GetDiffusion(),
+                                       reverb.GetLP(),        reverb.GetPredelay() };
+        int result = cemfx_reverb_block(ceMods::masterReverb(),
+                                        buffer,
+                                        buffer2,
+                                        &params,
+                                        block_left->data,
+                                        block_right->data);
+        if (result != CEMFX_RUN_STOCK)
+        {
+            if (result == CEMFX_STOCK_RESET)
+            {
+                reverb.Reset();
+            }
+            if (result == CEMFX_DONE)
+            {
+                transmit(block_left, 0);
+                transmit(block_right, 1);
+            }
+            release(block_left);
+            release(block_right);
+            return;
+        }
+    }
+#endif
 
     reverb.Process(block_left->data, block_right->data, AUDIO_BLOCK_SAMPLES);
 

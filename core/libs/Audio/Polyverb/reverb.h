@@ -193,6 +193,14 @@ class Reverb
 
     inline bool IsActive() { return last_update_delta_ > sound_delta_threshold_; }
 
+    // tracker-mini-ce Master FX: the knob values, for the other reverbs
+    inline float GetAmount() const { return amount_; }
+    inline float GetInputGain() const { return input_gain_; }
+    inline float GetTime() const { return reverb_time_; }
+    inline float GetDiffusion() const { return diffusion_; }
+    inline float GetLP() const { return lp_; }
+    inline int GetPredelay() const { return predelay_length_; }
+
     inline void SetActiveThreshold(float threshold) { sound_delta_threshold_ = threshold; }
 
   private:

@@ -3,6 +3,7 @@
 
 #include "configEditor/configMenuActions.h"
 #include "ThemeManager.h"
+#include "fileManager.h"
 
 #include "imageViewer/imageViewerDefs.h"
 
@@ -19,11 +20,11 @@
 
 #ifdef TRACKER_MINI
 constexpr uint8_t baseMenuGroupCount = 8;
-constexpr uint8_t projectMenuGroupCount = 10;
+constexpr uint8_t projectMenuGroupCount = 12;
 constexpr uint8_t generalMenuGroupCount = 9;
 #elif defined(PLATFORM_IMX)
 constexpr uint8_t baseMenuGroupCount = 7;
-constexpr uint8_t projectMenuGroupCount = 10;
+constexpr uint8_t projectMenuGroupCount = 12;
 constexpr uint8_t generalMenuGroupCount = 12;
 #else
 constexpr uint8_t baseMenuGroupCount = 6;
@@ -82,6 +83,21 @@ cMenuItem melLimiterMode(menuProject, "Limiter mode", limiterDesc, menuTypeItemL
 cMenuItem melSendsMode(menuProject, "Sends mode", sendsDesc,  menuTypeItemListTextWithAction, &setupSendsMode);
 cMenuItem melHeadroomMode(menuProject, "Extra headroom", headroomDesc,  menuTypeItemListTextWithAction, &setupHeadroomMode);
 cMenuItem melSnapToZeroMode(menuProject, "Snap to zero", snapToZeroDesc,  menuTypeItemListTextWithAction, &setupSnapToZeroMode);
+
+#ifdef PLATFORM_IMX
+// tracker-mini-ce: Master FX (stored in the project, see ceMods.h and ceMasterFx.h)
+static const char* const masterReverbTexts[7] = { "Stock", "Freeverb", "Plate", "Spring", "Shimmer", "Gated", "Reverse" };
+static const char* const masterDelayTexts[7] = { "Stock", "Tape", "BBD", "Prime", "Reverse", "Multi-tap", "Lo-fi" };
+static const char masterReverbDesc[] = { "The master reverb of this project. The Master Reverb "
+                                         "knobs set the chosen one. Stock is the normal reverb." };
+static const char masterDelayDesc[] = { "The master delay of this project. The Master Delay "
+                                        "knobs set the chosen one. Stock is the normal delay." };
+static void setCeModsMfxSetting() { newFileManager.setProjectStructChanged(); }
+const strItemTypeListTextWithAction setupMasterReverb{ &mtProject.values.midiInstrument[kMidiInstrumentsCount - 1].reserved[5], 7, masterReverbTexts, setCeModsMfxSetting };
+const strItemTypeListTextWithAction setupMasterDelay{ &mtProject.values.midiInstrument[kMidiInstrumentsCount - 1].reserved[6], 7, masterDelayTexts, setCeModsMfxSetting };
+cMenuItem melMasterReverb(menuProject, "Master reverb", masterReverbDesc, menuTypeItemListTextWithAction, &setupMasterReverb);
+cMenuItem melMasterDelay(menuProject, "Master delay", masterDelayDesc, menuTypeItemListTextWithAction, &setupMasterDelay);
+#endif
 
 // general
 const strItemTypeListTextWithAction setupRadioRegion{ &mtConfig.general.radioRegion, 4, radioRegion, setRadioRegion };

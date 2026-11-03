@@ -2,6 +2,10 @@
 #include "Audio.h"
 #include "mtSequencer.h"
 #include "utility/dspinst.h"
+#ifdef PLATFORM_IMX
+#include "ceMasterFx/ceMasterFx.h"
+#include "ceMods.h"
+#endif
 
 static int16_t zeroblock[AUDIO_BLOCK_SAMPLES] = {};
 
@@ -145,8 +149,41 @@ AUDIO_CORE_RAM void AudioEffectShortDelay::update(void)
     outputRight = allocate();
 
     bool processed = false;
+    bool handled = false;
 
-    if (outputLeft != nullptr && outputRight != nullptr)
+#ifdef PLATFORM_IMX
+    // tracker-mini-ce Master FX: the project's delay choice
+    if (outputLeft != nullptr && outputRight != nullptr && !noRefresh)
+    {
+        cemfx_delay_params params = { timeInSamples, feedback, isPingpong, filterCoeffs.b1 };
+        int result = cemfx_delay_block(ceMods::masterDelay(),
+                                       pingpongDelaylineLeft,
+                                       pingpongDelaylineRight,
+                                       monoDelayline,
+                                       &params,
+                                       input != nullptr ? input->data : nullptr,
+                                       outputLeft->data,
+                                       outputRight->data);
+        if (result != CEMFX_RUN_STOCK)
+        {
+            handled = true;
+            if (result == CEMFX_STOCK_RESET)
+            {
+                // the lines were cleared a piece per block; only the filters are left
+                lastFilterInLeft = lastFilterInRight = lastFilterInMono = 0;
+                lastFilterOutLeft = lastFilterOutRight = lastFilterOutMono = 0;
+                silentSamplesCount = MAX_DELAYLINE_LENGTH;
+            }
+            processed = (result == CEMFX_DONE);
+            if (processed)
+            {
+                silentSamplesCount = 0; // the export waits for the delay's time
+            }
+        }
+    }
+#endif
+
+    if (!handled && outputLeft != nullptr && outputRight != nullptr)
     {
         processed = process(input != nullptr ? input->data : zeroblock,
                             outputLeft->data,
