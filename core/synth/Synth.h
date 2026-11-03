@@ -46,6 +46,10 @@ class Synth
                                                 polysynth::InstrumentTypeId::kOtAtypeSynth,
                                                 polysynth::InstrumentTypeId::kOtCstypeSynth,
                                                 polysynth::InstrumentTypeId::kOtTtypeSynth,
+                                                polysynth::InstrumentTypeId::kOtEightSynth,
+                                                polysynth::InstrumentTypeId::kOtHandSynth,
+                                                polysynth::InstrumentTypeId::kOtBtypeSynth,
+                                                polysynth::InstrumentTypeId::kOtArcSynth,
                                                 };
     static constexpr auto kInitPatchName = "Init";
 

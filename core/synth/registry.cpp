@@ -45,6 +45,10 @@ void InstrumentTypeRegistry::registerInstrumentTypes(
     registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtAtypeSynth), createOtAtypeSynth());
     registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtCstypeSynth), createOtCstypeSynth());
     registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtTtypeSynth), createOtTtypeSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtEightSynth), createOtEightSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtHandSynth), createOtHandSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtBtypeSynth), createOtBtypeSynth());
+    registry.addInstrumentType(static_cast<int>(InstrumentTypeId::kOtArcSynth), createOtArcSynth());
 }
 
 } // namespace polysynth

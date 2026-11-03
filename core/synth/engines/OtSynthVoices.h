@@ -15,4 +15,8 @@ std::unique_ptr<InstrumentType> createOtDtypeSynth();
 std::unique_ptr<InstrumentType> createOtAtypeSynth();
 std::unique_ptr<InstrumentType> createOtCstypeSynth();
 std::unique_ptr<InstrumentType> createOtTtypeSynth();
+std::unique_ptr<InstrumentType> createOtEightSynth();
+std::unique_ptr<InstrumentType> createOtHandSynth();
+std::unique_ptr<InstrumentType> createOtBtypeSynth();
+std::unique_ptr<InstrumentType> createOtArcSynth();
 } // namespace polysynth

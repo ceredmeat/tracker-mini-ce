@@ -54,6 +54,22 @@ namespace ttype
 {
 ISynthEngine* engine();
 }
+namespace eight
+{
+ISynthEngine* engine();
+}
+namespace hand
+{
+ISynthEngine* engine();
+}
+namespace btype
+{
+ISynthEngine* engine();
+}
+namespace arc
+{
+ISynthEngine* engine();
+}
 } // namespace audio
 namespace mod
 {
@@ -63,6 +79,10 @@ extern const SynthDescriptor kDtypeDescriptor;
 extern const SynthDescriptor kAtypeDescriptor;
 extern const SynthDescriptor kCstypeDescriptor;
 extern const SynthDescriptor kTtypeDescriptor;
+extern const SynthDescriptor kEightDescriptor;
+extern const SynthDescriptor kHandDescriptor;
+extern const SynthDescriptor kBtypeDescriptor;
+extern const SynthDescriptor kArcDescriptor;
 } // namespace mod
 } // namespace ot
 
@@ -89,6 +109,10 @@ const OtEngineDef kOtEngines[] = {
     { &ot::audio::atype::engine, &ot::mod::kAtypeDescriptor, InstrumentTypeId::kOtAtypeSynth, "A-Type" },
     { &ot::audio::cstype::engine, &ot::mod::kCstypeDescriptor, InstrumentTypeId::kOtCstypeSynth, "CS-Type" },
     { &ot::audio::ttype::engine, &ot::mod::kTtypeDescriptor, InstrumentTypeId::kOtTtypeSynth, "T-Type" },
+    { &ot::audio::eight::engine, &ot::mod::kEightDescriptor, InstrumentTypeId::kOtEightSynth, "8-Type" },
+    { &ot::audio::hand::engine, &ot::mod::kHandDescriptor, InstrumentTypeId::kOtHandSynth, "Hand-Type" },
+    { &ot::audio::btype::engine, &ot::mod::kBtypeDescriptor, InstrumentTypeId::kOtBtypeSynth, "B-Type" },
+    { &ot::audio::arc::engine, &ot::mod::kArcDescriptor, InstrumentTypeId::kOtArcSynth, "Arc-Type" },
 };
 constexpr int kOtEngineCount = static_cast<int>(std::size(kOtEngines));
 
@@ -448,6 +472,10 @@ std::unique_ptr<InstrumentType> createOtDtypeSynth() { return makeOtType<2>(); }
 std::unique_ptr<InstrumentType> createOtAtypeSynth() { return makeOtType<3>(); }
 std::unique_ptr<InstrumentType> createOtCstypeSynth() { return makeOtType<4>(); }
 std::unique_ptr<InstrumentType> createOtTtypeSynth() { return makeOtType<5>(); }
+std::unique_ptr<InstrumentType> createOtEightSynth() { return makeOtType<6>(); }
+std::unique_ptr<InstrumentType> createOtHandSynth() { return makeOtType<7>(); }
+std::unique_ptr<InstrumentType> createOtBtypeSynth() { return makeOtType<8>(); }
+std::unique_ptr<InstrumentType> createOtArcSynth() { return makeOtType<9>(); }
 
 } // namespace polysynth
 

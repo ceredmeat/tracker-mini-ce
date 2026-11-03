@@ -96,6 +96,14 @@ enum enDisplayBitmaps
     kBitmapCSTYPE,
     kBitmapMiniTTYPE,
     kBitmapTTYPE,
+    kBitmapMiniEIGHT,
+    kBitmapEIGHT,
+    kBitmapMiniHAND,
+    kBitmapHAND,
+    kBitmapMiniBTYPE,
+    kBitmapBTYPE,
+    kBitmapMiniARC,
+    kBitmapARC,
 
 #endif
 

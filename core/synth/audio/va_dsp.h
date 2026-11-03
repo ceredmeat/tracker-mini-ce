@@ -62,6 +62,8 @@ inline float tanhR(float x)
     const float x2 = x * x;
     return x * (27.0f + x2) / (27.0f + 9.0f * x2);
 }
+// Cubic soft clip (for inputs within -3..3).
+inline float clip3(float x) { return x - x * x * x * (1.0f / 27.0f); }
 // White noise -1..1.
 inline float lcg(uint32_t& s)
 {

@@ -48,7 +48,11 @@ enum class InstrumentTypeId
     kOtAtypeSynth,
     kOtCstypeSynth,
     kOtTtypeSynth,
-    kLastSynth = kOtTtypeSynth,
+    kOtEightSynth,
+    kOtHandSynth,
+    kOtBtypeSynth,
+    kOtArcSynth,
+    kLastSynth = kOtArcSynth,
     kDelay = 1000,
     kReverb,
 };
