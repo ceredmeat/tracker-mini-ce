@@ -97,6 +97,7 @@ $(OBJ_DIR)/%.o: %.S config/config.h
  
 $(TARGET): $(OBJS_SORTED)
 	@$(TOOLCHAIN)c++ -L ./linker -L ./linker/$(TARGET) -L ./3rdparty/math -L ${POLYSYNTH_DIR}/lib -L${TRACKER_DIR}/build-IMX-$(PRODUCT) -Xlinker --defsym=__rtc_localtime=0 -Xlinker -print-memory-usage -Xlinker --gc-sections -mcpu=cortex-m7 -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -nostdlib -T linkerScript.ld -u _printf_float -o "$(BUILD_DIR)/$(TARGET).axf" $(OBJS_SORTED) $(LIBS)
+	@echo "=== CE-SYMBOLS $(TARGET) ==="; $(TOOLCHAIN)nm -S --size-sort -C "$(BUILD_DIR)/$(TARGET).axf" > "$(BUILD_DIR)/syms.txt"; echo "--- DTC"; grep -E "^2000" "$(BUILD_DIR)/syms.txt" | tail -70; echo "--- ITC"; grep -E "^000" "$(BUILD_DIR)/syms.txt" | tail -40; echo "--- OC"; grep -E "^2020" "$(BUILD_DIR)/syms.txt" | tail -25; echo "=== CE-SYMBOLS END ==="
 	@$(MAKE) --no-print-directory post-build
 	
 # Main rules
