@@ -6,6 +6,8 @@
 // 800 x 416 pixels and 650 KB. Anything else, or any trouble while loading: the normal
 // start screen.
 
+#include <stdint.h>
+
 namespace splash
 {
 // once the SD card is ready and the start project has begun loading
@@ -16,6 +18,11 @@ void update();
 bool busy();
 // the start screen is going away
 void end();
+
+// the same safety check for any JPEG (used by the standby screen): true if the FT812 can
+// decode it for sure and its size in whole blocks fits maxW x maxH
+bool checkJpeg(const char* path, uint16_t maxW, uint16_t maxH, uint16_t& w, uint16_t& h,
+               uint16_t& padW, uint16_t& padH);
 } // namespace splash
 
 #endif

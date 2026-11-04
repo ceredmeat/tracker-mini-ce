@@ -48,13 +48,14 @@ static uint32_t now()
 // (SOF0) 8-bit JPEG, grayscale or YCbCr 4:4:4 / 4:2:2 / 4:2:0, one scan, ending with EOI,
 // no progressive / lossless / arithmetic coding. Fills the picture size and its size in
 // whole JPEG blocks (what the decoder writes).
-static bool checkFile(FileSystem* fs, uint16_t& w, uint16_t& h, uint16_t& padW, uint16_t& padH)
+static bool checkFile(FileSystem* fs, const char* path, uint16_t maxW, uint16_t maxH, uint16_t& w,
+                      uint16_t& h, uint16_t& padW, uint16_t& padH)
 {
-    if (!fs->exists(kPath))
+    if (!fs->exists(path))
     {
         return false;
     }
-    auto [isOpen, file] = fs->openFile(kPath, FileSystem::FileOpenMode::kRead);
+    auto [isOpen, file] = fs->openFile(path, FileSystem::FileOpenMode::kRead);
     if (!isOpen)
     {
         return false;
@@ -176,7 +177,7 @@ static bool checkFile(FileSystem* fs, uint16_t& w, uint16_t& h, uint16_t& padW, 
                 uint16_t bw = 8 * hmax, bh = 8 * vmax;
                 padW = (uint16_t)((w + bw - 1) / bw * bw);
                 padH = (uint16_t)((h + bh - 1) / bh * bh);
-                if (padW > kMaxWidth || padH > kMaxHeight)
+                if (padW > maxW || padH > maxH)
                 {
                     bad = true;
                     break;
@@ -271,7 +272,7 @@ void begin()
     }
 
     uint16_t w = 0, h = 0, padW = 0, padH = 0;
-    if (!checkFile(fs, w, h, padW, padH))
+    if (!checkFile(fs, kPath, kMaxWidth, kMaxHeight, w, h, padW, padH))
     {
         state = State::kFailed; // no file, or one the decoder shouldn't see: the logo
         return;
@@ -342,6 +343,13 @@ bool busy()
     return state == State::kLoading;
 }
 
+bool checkJpeg(const char* path, uint16_t maxW, uint16_t maxH, uint16_t& w, uint16_t& h,
+               uint16_t& padW, uint16_t& padH)
+{
+    FileSystem* fs = TrackerImpl::getInstance()->getPlatform()->getFileSystem();
+    return checkFile(fs, path, maxW, maxH, w, h, padW, padH);
+}
+
 void end()
 {
     if (state == State::kLoading)
@@ -371,6 +379,10 @@ bool busy()
 }
 void end()
 {
+}
+bool checkJpeg(const char*, uint16_t, uint16_t, uint16_t&, uint16_t&, uint16_t&, uint16_t&)
+{
+    return false;
 }
 } // namespace splash
 

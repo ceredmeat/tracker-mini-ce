@@ -112,6 +112,13 @@ class Interface
 
     Theme* theme();
 
+    // tracker-mini-ce: the standby screen
+    ModuleBase* getOnScreenModule() { return onScreenModule; }
+    bool isRunningNormally()
+    {
+        return operatingMode == mtOperatingModeRun && specialScreenMode == specialScreenModeDisabled;
+    }
+
     InputProcessor* ip;
 
   private:

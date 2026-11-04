@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "core/interface.h"
+#include "core/ceStandby.h"
 #include "ThemeManager.h"
 #include "configEditor/configEditor.h"
 #include "configEditor/configMenuActions.h"
@@ -135,6 +136,7 @@ void Interface::update()
         onScreenModule->update();
 
     mtPopups.update();
+    ceStandby::update(); // tracker-mini-ce: standby screen
 
     mtTest.testLoop();
 

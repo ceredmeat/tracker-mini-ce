@@ -129,6 +129,12 @@ class cDisplay
     // controlsRamStartAddress + slot * controlsRamAddressStep), -1 if none
     int highestUsedControlSlot();
 
+    // tracker-mini-ce: while set, the whole screen is drawn by this function (on black,
+    // about 25 frames a second) instead of by the controls, which keep updating
+    // underneath; clearing it redraws the controls (the standby screen)
+    void setFullScreenPainter(void (*painter)());
+    bool hasFullScreenPainter() { return fullScreenPainter != nullptr; }
+
     void scheduleScreenShot(int timeSec);
     void doScreenShot();
 
@@ -200,6 +206,8 @@ class cDisplay
     bool freshControl;
 
     bool stopAppend;
+    void (*fullScreenPainter)() = nullptr; // tracker-mini-ce
+    uint32_t lastFullFrameMs = 0;
     uint8_t synchQueuePosition;
     hControl refreshQueue[controlsRefreshQueueSize]; // FIFO
     uint8_t refreshQueueTop;

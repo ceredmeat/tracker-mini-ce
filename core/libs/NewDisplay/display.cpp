@@ -485,6 +485,13 @@ void cDisplay::update()
         return;
     }
 
+    // tracker-mini-ce: the full-screen painter draws its frames even when nothing else changes
+    if (fullScreenPainter != nullptr && updateStep == 0 && refreshQueueTop == refreshQueueBott &&
+        timer->millis() - lastFullFrameMs >= 40)
+    {
+        updateStep = 2;
+    }
+
     switch (updateStep)
     {
         case 0: step1(); break; // jesli jakas kontrolka w kolejce odswiezania, odswieza ja
@@ -637,6 +644,23 @@ void cDisplay::step3()
     {
         updateStep = 0;
         step1();
+        return;
+    }
+
+    if (fullScreenPainter != nullptr)
+    {
+        displayDriver->beginCoProListNoCheck();
+        API_CMD_DLSTART();
+        API_CLEAR_COLOR(0x000000);
+        API_CLEAR(1, 1, 1);
+        API_VERTEX_FORMAT(0);
+        fullScreenPainter();
+        API_DISPLAY();
+        API_CMD_SWAP();
+        displayDriver->endCoProList();
+        lastFullFrameMs = timer->millis();
+        memoryUsed = 0;
+        updateStep = 0;
         return;
     }
 
@@ -1242,6 +1266,15 @@ void cDisplay::controlIdToString(uint8_t id, char* string)
 //=====================================================================================================
 // hardware
 //=====================================================================================================
+void cDisplay::setFullScreenPainter(void (*painter)())
+{
+    fullScreenPainter = painter;
+    if (painter == nullptr)
+    {
+        stopAppend = true; // once the queue is empty, draw every control again
+    }
+}
+
 void cDisplay::setBacklightBrightness(uint8_t value)
 {
     //
