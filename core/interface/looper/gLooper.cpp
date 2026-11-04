@@ -14,6 +14,41 @@
 
 using namespace lp;
 
+// tracker-mini-ce: the Looper follows the tracker's theme (Config -> General -> Theme).
+// Its colours were picked for a black screen; every grey is mapped between the theme's
+// background (black) and its text colour (white), and the record red and the yellow are
+// the theme's own. With the default theme nothing changes.
+static uint32_t themed(uint32_t c)
+{
+    const Theme& t = display.getTheme();
+    if (c == 0xE04848) return t.red;
+    if (c == 0xE2D25E) return t.yellow;
+    uint32_t r = (c >> 16) & 0xFF, g = (c >> 8) & 0xFF, b = c & 0xFF;
+    uint32_t bg = t.backgroundColor, fg = t.topBarLabelColors[0];
+    if (bg == 0x000000 && fg == 0xFFFFFF) return c;
+    auto mix = [](uint32_t from, uint32_t to, uint32_t amount, int shift)
+    {
+        int a = (int)((from >> shift) & 0xFF), z = (int)((to >> shift) & 0xFF);
+        return (uint32_t)(a + (z - a) * (int)amount / 255) << shift;
+    };
+    if (r == g && g == b)
+        return mix(bg, fg, r, 16) | mix(bg, fg, r, 8) | mix(bg, fg, r, 0);
+    // a colour: keep it, but on a light background use it at full strength against the
+    // background (a dim colour meant for black would vanish on white)
+    uint32_t lum = (r * 3 + g * 6 + b) / 10;
+    uint32_t bgLum = (((bg >> 16) & 0xFF) * 3 + ((bg >> 8) & 0xFF) * 6 + (bg & 0xFF)) / 10;
+    if (bgLum > 128 && lum < 128)
+    {
+        // brighten dark tints so they read on a light screen: scale towards full
+        uint32_t m = r > g ? (r > b ? r : b) : (g > b ? g : b);
+        if (m == 0) return fg;
+        return ((r * 200 / m) << 16) | ((g * 200 / m) << 8) | (b * 200 / m);
+    }
+    return c;
+}
+// every colour this file sets goes through themed()
+#define API_COLOR(c) ::API_COLOR(themed(c))
+
 // layout (800 x 480)
 static constexpr int kLaneH = 106;
 static constexpr int kWaveX = 14;

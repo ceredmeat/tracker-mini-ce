@@ -45,7 +45,7 @@ namespace
 constexpr char kFolder[] = "/Images/Standby";
 constexpr char kCfgPath[] = "/Images/Standby/standby.cfg";
 constexpr uint32_t kMinutes[6] = { 0, 1, 2, 5, 10, 30 };
-constexpr uint32_t kRamGLimit = 1000000;
+constexpr uint32_t kRamGLimit = 1048576; // all of RAM_G: no PNG is decoded during standby
 constexpr uint32_t kSpareSlots = 3;
 constexpr uint32_t kLoadTimeoutMs = 4000;
 constexpr uint32_t kKnobSwallowMs = 400;

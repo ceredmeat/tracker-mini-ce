@@ -5,6 +5,8 @@
 #ifdef PLATFORM_IMX
 
 #include <stdint.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "Platform.h"
@@ -22,8 +24,23 @@ static constexpr char kPathNoExt[] = "/Images/Startup/splash"; // readImgFromSd 
 static constexpr uint32_t kMaxFileBytes = 650u * 1024u;        // the image viewer's limit
 static constexpr uint16_t kMaxWidth = 800;
 static constexpr uint16_t kMaxHeight = 416;     // what fits in RAM_G during boot
-static constexpr uint32_t kRamGLimit = 1000000; // CE keeps images below this (PNG scratch above)
-static constexpr uint32_t kSpareSlots = 3;      // control slots kept free above those in use
+// tracker-mini-ce (fix1): the whole of RAM_G (1 MB). CE keeps its images below 1,000,000
+// because PNG decoding uses the top 42 KB as scratch; nothing decodes a PNG during boot,
+// and a JPEG needs no scratch, so the startup picture may use it.
+static constexpr uint32_t kRamGLimit = 1048576;
+static constexpr uint32_t kSpareSlots = 1; // control slots kept free above those in use
+
+// why the picture was or wasn't shown, written to /Images/Startup/splash_log.txt once the
+// start screen is over (a file to read on a computer when the logo shows instead)
+static char logText[240];
+static void logf(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
+static void logf(const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(logText, sizeof(logText), fmt, ap);
+    va_end(ap);
+}
 static constexpr uint32_t kTimeoutMs = 3000;
 
 enum class State : uint8_t
@@ -267,6 +284,7 @@ void begin()
     FileSystem* fs = TrackerImpl::getInstance()->getPlatform()->getFileSystem();
     if (!fs->isSdCardInserted())
     {
+        logf("no card at boot");
         state = State::kFailed;
         return;
     }
@@ -274,7 +292,12 @@ void begin()
     uint16_t w = 0, h = 0, padW = 0, padH = 0;
     if (!checkFile(fs, kPath, kMaxWidth, kMaxHeight, w, h, padW, padH))
     {
-        state = State::kFailed; // no file, or one the decoder shouldn't see: the logo
+        // no file, or one the decoder shouldn't see: the logo
+        if (fs->exists(kPath))
+            logf("refused by the file check: %u x %u (in blocks %u x %u, limit %u x %u), %u bytes. "
+                 "Needs a baseline JPEG ending with FF D9, at most 650 KB.",
+                 w, h, padW, padH, kMaxWidth, kMaxHeight, (unsigned)fs->getFileSize(kPath));
+        state = State::kFailed;
         return;
     }
 
@@ -286,6 +309,10 @@ void begin()
     if (addr + (uint32_t)padW * padH * 2 > kRamGLimit || display.getImgLoadState() == 1 ||
         display.getImgLoadState() == 2)
     {
+        logf("no room: controls up to slot %d, picture at %lu needs %lu bytes, limit %lu "
+             "(loader state %u). A smaller picture fits.",
+             slot, (unsigned long)addr, (unsigned long)padW * padH * 2, (unsigned long)kRamGLimit,
+             display.getImgLoadState());
         state = State::kFailed;
         return;
     }
@@ -294,9 +321,11 @@ void begin()
     strcpy(path, kPathNoExt);
     if (display.readImgFromSd(path, addr, kMaxWidth, kMaxHeight) != 0)
     {
+        logf("CE's image loader refused it (it needs a JFIF header): %u x %u", w, h);
         state = State::kFailed; // e.g. no JFIF header (CE's loader needs one)
         return;
     }
+    logf("loading %u x %u at %lu (controls up to slot %d)", w, h, (unsigned long)addr, slot);
     width = w;
     height = h;
     address = addr;
@@ -321,18 +350,27 @@ void update()
             startScreenSplash.height = height;
             startScreenSplash.show = true;
             state = State::kShown;
+            logf("shown: %u x %u at %lu, decoded in %lu ms", width, height, (unsigned long)address,
+                 (unsigned long)(now() - startMs));
         }
         else
+        {
+            logf("the decoder reported %lu x %lu ending at %lu (expected %u x %u)",
+                 (unsigned long)getProps.Width, (unsigned long)getProps.Height,
+                 (unsigned long)getProps.End_Address, width, height);
             fail(false);
+        }
         return;
     }
     if (s == 4 || s == 0)
     {
+        logf(s == 4 ? "the decoder stopped (co-processor reset)" : "the file ended early");
         fail(s == 4); // stopped by a co-processor reset, or the file ended early
         return;
     }
     if (now() - startMs > kTimeoutMs)
     {
+        logf("the decoder took longer than %lu ms", (unsigned long)kTimeoutMs);
         display.abortImageLoad();
         fail(true);
     }
@@ -359,6 +397,24 @@ void end()
     }
     startScreenSplash.show = false;
     // the picture's RAM_G area is free again for the screens that follow
+
+    // the reason, for a look on a computer (only when a picture was put there)
+    FileSystem* fs = TrackerImpl::getInstance()->getPlatform()->getFileSystem();
+    if (logText[0] != 0 && fs->isSdCardInserted() && fs->exists(kPath))
+    {
+        static constexpr char kLog[] = "/Images/Startup/splash_log.txt";
+        if (fs->exists(kLog))
+            fs->remove(kLog);
+        auto [ok, h] = fs->openFile(kLog, FileSystem::kWriteCreateNew);
+        if (ok)
+        {
+            char line[300];
+            int n = snprintf(line, sizeof(line), "%s (firmware %s)\r\n", logText, FW_EDITION_NAME);
+            fs->writeFile(line, (size_t)n, h);
+            fs->closeFile(h);
+        }
+        logText[0] = 0;
+    }
 }
 
 } // namespace splash
