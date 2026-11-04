@@ -1,6 +1,8 @@
+#include "core/splashScreen.h"
 #include <string.h>
 
 #include "core/interface.h"
+#include "core/ceStandby.h"
 #include "ThemeManager.h"
 #include "configEditor/configEditor.h"
 #include "configEditor/configMenuActions.h"
@@ -166,6 +168,7 @@ void Interface::update()
         onScreenModule->update();
 
     mtPopups.update();
+    ceStandby::update(); // tracker-mini-ce: standby screen
 
     mtTest.testLoop();
 
@@ -193,6 +196,7 @@ void Interface::processOperatingMode()
             {
                 hideDisplayNoSdCard();
                 openStartupProject();
+                splash::begin(); // tracker-mini-ce: the card is ready, the UI is up
                 operatingMode = mtOperatingModeShowStartScreen;
             }
             break;
@@ -282,11 +286,14 @@ void Interface::processStartScreen()
 {
     if (fileSystem->isSdCardInserted())
     {
+        splash::update();
         refreshStartScreen();
 
-        if (detectProjectLoadState())
+        // tracker-mini-ce: a startup picture still loading keeps the start screen (at most 3 s)
+        if (!splash::busy() && detectProjectLoadState())
         {
             // koniec ekranu startowego
+            splash::end();
             destroyStartScreen();
             hideDisplayNoSdCard();
             operatingMode = mtOperatingModeRun;
@@ -308,6 +315,7 @@ void Interface::processStartScreen()
     }
     else
     {
+        splash::end();
         hideStartScreen();
         showDisplayNoSdCard();
         operatingMode = mtOperatingModeOpenProject;

@@ -267,6 +267,12 @@ const strBitmap bitmaps[displayBitmapsCount] = {
 
 uint32_t ImageViewerJpegAddress = 350000;
 
+// tracker-mini-ce: the FT812 co-processor's reset counter and a forced reset (EVE_Layer.cpp)
+#ifdef PLATFORM_IMX
+extern volatile uint32_t eveCoProResetCount;
+void EVE_ForceCoProReset(void);
+#endif
+
 strGetProps getProps;
 cDisplay display;
 FileSystem::FileHandle imgFile;
@@ -448,6 +454,22 @@ void cDisplay::update()
         if (!displayDriver->isCoProEmpty())
             return;
 
+#ifdef PLATFORM_IMX
+        // tracker-mini-ce: the co-processor was reset during the load (decoder fault):
+        // stop feeding it JPEG data, which it would now read as commands
+        if ((img.status == 1 || img.status == 2) && eveCoProResetCount != img.resetMark)
+        {
+            if (img.status == 1)
+            {
+                fileSystem->closeFile(imgFile, false);
+            }
+            img.status = 4; // failed
+            img.loadProgress = 0;
+            loadImage = 0;
+            return;
+        }
+#endif
+
         if (img.status == 1)
         {
             if (fileSystem->getFileAvailable(imgFile))
@@ -513,6 +535,13 @@ void cDisplay::update()
     if (!displayDriver->isCoProEmpty())
     {
         return;
+    }
+
+    // tracker-mini-ce: the full-screen painter draws its frames even when nothing else changes
+    if (fullScreenPainter != nullptr && updateStep == 0 && refreshQueueTop == refreshQueueBott &&
+        timer->millis() - lastFullFrameMs >= 40)
+    {
+        updateStep = 2;
     }
 
     switch (updateStep)
@@ -667,6 +696,23 @@ void cDisplay::step3()
     {
         updateStep = 0;
         step1();
+        return;
+    }
+
+    if (fullScreenPainter != nullptr)
+    {
+        displayDriver->beginCoProListNoCheck();
+        API_CMD_DLSTART();
+        API_CLEAR_COLOR(0x000000);
+        API_CLEAR(1, 1, 1);
+        API_VERTEX_FORMAT(0);
+        fullScreenPainter();
+        API_DISPLAY();
+        API_CMD_SWAP();
+        displayDriver->endCoProList();
+        lastFullFrameMs = timer->millis();
+        memoryUsed = 0;
+        updateStep = 0;
         return;
     }
 
@@ -1041,6 +1087,38 @@ bool cDisplay::isControlsRefreshProcessIdle()
 //=====================================================================================================
 // jpg/png
 //=====================================================================================================
+int cDisplay::highestUsedControlSlot()
+{
+    for (int i = controlsCount - 1; i >= 0; i--)
+    {
+        if (controlsTable[i] != nullptr)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void cDisplay::abortImageLoad()
+{
+    if (img.status != 1 && img.status != 2)
+    {
+        return;
+    }
+    FileSystem* fileSystem = TrackerImpl::getInstance()->getPlatform()->getFileSystem();
+    if (img.status == 1)
+    {
+        fileSystem->closeFile(imgFile, false);
+    }
+#ifdef PLATFORM_IMX
+    // the decoder may be waiting for data that won't come: restart the co-processor
+    EVE_ForceCoProReset();
+#endif
+    img.status = 4; // failed
+    img.loadProgress = 0;
+    loadImage = 0;
+}
+
 uint8_t cDisplay::readImgFromSd(char* path, uint32_t address, int16_t max_w, int16_t max_h)
 {
     FileSystem* fileSystem = TrackerImpl::getInstance()->getPlatform()->getFileSystem();
@@ -1111,6 +1189,9 @@ uint8_t cDisplay::readImgFromSd(char* path, uint32_t address, int16_t max_w, int
     img.loadProgress = 0;
     img.progressMax = img.size / imgBufforSize;
     img.status = 1;
+#ifdef PLATFORM_IMX
+    img.resetMark = eveCoProResetCount;
+#endif
 
     loadImage = 1;
 
@@ -1237,6 +1318,15 @@ void cDisplay::controlIdToString(uint8_t id, char* string)
 //=====================================================================================================
 // hardware
 //=====================================================================================================
+void cDisplay::setFullScreenPainter(void (*painter)())
+{
+    fullScreenPainter = painter;
+    if (painter == nullptr)
+    {
+        stopAppend = true; // once the queue is empty, draw every control again
+    }
+}
+
 void cDisplay::setBacklightBrightness(uint8_t value)
 {
     //

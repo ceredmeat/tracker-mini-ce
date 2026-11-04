@@ -312,6 +312,18 @@ uint8_t EVE_WaitCmdFifoEmpty(void)
 }
 
 uint32_t error_counter = 0;
+volatile uint32_t eveCoProResetCount = 0; // tracker-mini-ce: lets the image loader see a reset
+
+// tracker-mini-ce: hold the co-processor in reset and restart it with an empty FIFO
+void EVE_ForceCoProReset(void)
+{
+    error_counter = 0;
+    EVE_MemWrite32(REG_CPURESET, 1);
+    EVE_MemWrite32(REG_CMD_READ, 0);
+    EVE_MemWrite32(REG_CMD_WRITE, 0);
+    EVE_MemWrite32(REG_CPURESET, 0);
+    eveCoProResetCount++;
+}
 
 uint8_t EVE_IsCmdFifoEmpty(void)
 {
@@ -324,6 +336,7 @@ uint8_t EVE_IsCmdFifoEmpty(void)
         // Set REG_CMD_READ and REG_CMD_WRITE to zero
         // Set REG_CPURESET to 0, to restart the co-processor engine
         error_counter = 0;
+        eveCoProResetCount++;
 
         EVE_MemWrite32(REG_CPURESET, 1);
         EVE_MemWrite32(REG_CMD_READ, 0);

@@ -123,6 +123,17 @@ class cDisplay
     void readImgFromMemory(uint8_t* data, uint32_t size);
     uint8_t isImgLoaded() { return img.status == 3; }
     uint8_t getImgLoadState() { return img.status; }
+    // tracker-mini-ce: stop a picture load (resets the FT812 co-processor if it is busy with it)
+    void abortImageLoad();
+    // tracker-mini-ce: the highest control slot in use (its display list sits at
+    // controlsRamStartAddress + slot * controlsRamAddressStep), -1 if none
+    int highestUsedControlSlot();
+
+    // tracker-mini-ce: while set, the whole screen is drawn by this function (on black,
+    // about 25 frames a second) instead of by the controls, which keep updating
+    // underneath; clearing it redraws the controls (the standby screen)
+    void setFullScreenPainter(void (*painter)());
+    bool hasFullScreenPainter() { return fullScreenPainter != nullptr; }
 
     void scheduleScreenShot(int timeSec);
     void doScreenShot();
@@ -195,6 +206,8 @@ class cDisplay
     bool freshControl;
 
     bool stopAppend;
+    void (*fullScreenPainter)() = nullptr; // tracker-mini-ce
+    uint32_t lastFullFrameMs = 0;
     uint8_t synchQueuePosition;
     hControl refreshQueue[controlsRefreshQueueSize]; // FIFO
     uint8_t refreshQueueTop;
@@ -229,6 +242,7 @@ class cDisplay
         uint32_t size;
 
         uint32_t address;
+        uint32_t resetMark = 0; // tracker-mini-ce: co-processor resets seen when the load began
 
     } img;
 

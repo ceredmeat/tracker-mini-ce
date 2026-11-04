@@ -23,11 +23,11 @@ static constexpr int kWaveH = 88;
 static constexpr int kKeysY = 424;
 static constexpr uint32_t kLaneStride = kWaveW / 4;
 static constexpr uint32_t kLaneBytes = kLaneStride * kWaveH;
-static constexpr uint32_t kLaneRamG = 683000;   // past the controls' display lists (150000 + 65 x 8192)
+static constexpr uint32_t kLaneRamG = 684000;   // past the controls' display lists (151000 + 65 x 8192)
 static constexpr int kEdH = 300;
 static constexpr int kEdY = 60;
 static constexpr uint32_t kEdBytes = kLaneStride * kEdH;
-static constexpr uint32_t kEdRamG = 751000;
+static constexpr uint32_t kEdRamG = 752000;
 static constexpr uint8_t kBitmapHandle = 14;
 
 // colours

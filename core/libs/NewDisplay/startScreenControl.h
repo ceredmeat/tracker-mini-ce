@@ -3,6 +3,17 @@
 
 #include "displayControls.h"
 
+// tracker-mini-ce: a picture from the SD card (/Images/Startup/splash.jpg) instead of the
+// logo, decoded by the FT812 into RAM_G (see interface/core/splashScreen.cpp)
+struct StartScreenSplash
+{
+    bool show = false;
+    uint32_t address = 0; // RGB565 in RAM_G
+    uint16_t width = 0;
+    uint16_t height = 0;
+};
+extern StartScreenSplash startScreenSplash;
+
 //--------------------------------------------------------------------
 //--------------------------------------------------------------------
 //--------------------------------------------------------------------

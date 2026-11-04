@@ -6,6 +6,7 @@
 #include "fileManager.h"
 #include "ceModsExtra.h"
 #include "ceInsert/ceFxPack.h"
+#include "core/ceStandby.h"
 
 #include "imageViewer/imageViewerDefs.h"
 
@@ -23,11 +24,11 @@
 #ifdef TRACKER_MINI
 constexpr uint8_t baseMenuGroupCount = 8;
 constexpr uint8_t projectMenuGroupCount = 24;
-constexpr uint8_t generalMenuGroupCount = 9;
+constexpr uint8_t generalMenuGroupCount = 11;
 #elif defined(PLATFORM_IMX)
 constexpr uint8_t baseMenuGroupCount = 7;
 constexpr uint8_t projectMenuGroupCount = 24;
-constexpr uint8_t generalMenuGroupCount = 12;
+constexpr uint8_t generalMenuGroupCount = 14;
 #else
 constexpr uint8_t baseMenuGroupCount = 6;
 constexpr uint8_t projectMenuGroupCount = 15;
@@ -323,6 +324,21 @@ cMenuItem melLinInOutType(menuGeneral,
                           lineInChannelDesc,
                           menuTypeItemListTextWithAction,
                           &setupLineInOutType);
+
+#ifdef PLATFORM_IMX
+// tracker-mini-ce: Standby screen (kept on the card, see ceStandby.h)
+static const char* const standbyTimeTexts[6] = { "Off", "1 min", "2 min", "5 min", "10 min", "30 min" };
+static const char* const standbyModeTexts[2] = { "Picture", "Black" };
+static const char standbyTimeDesc[] = { "After this long without a button, the screen shows a "
+                                        "picture from /Images/Standby (or goes black). The next "
+                                        "press only wakes it. Playback carries on." };
+static const char standbyModeDesc[] = { "Picture: a JPEG from /Images/Standby drifting slowly "
+                                        "(640 x 352 suits most screens). Black: a dark screen." };
+const strItemTypeListTextWithAction setupStandbyTime{ &ceStandby::timeoutSetting, 6, standbyTimeTexts, ceStandby::settingsChanged };
+const strItemTypeListTextWithAction setupStandbyMode{ &ceStandby::modeSetting, 2, standbyModeTexts, ceStandby::settingsChanged };
+cMenuItem melStandbyTime(menuGeneral, "Standby after", standbyTimeDesc, menuTypeItemListTextWithAction, &setupStandbyTime);
+cMenuItem melStandbyMode(menuGeneral, "Standby shows", standbyModeDesc, menuTypeItemListTextWithAction, &setupStandbyMode);
+#endif
 
 //==================================================================================================================================================================
 // Metroneome
