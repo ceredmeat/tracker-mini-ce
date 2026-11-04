@@ -13,6 +13,7 @@ Changes from the original:
 - `.cc` files renamed `.cpp` (the firmware's makefile builds `.cpp`).
 - `drivers/debug_pin.h`: the module's STM32 debug pin replaced by empty TIC / TOC.
 - Only the files the granular processor needs are included.
+- `dsp/mu_law.*`: `lut_ulaw` made `const`, so it stays in flash instead of on-chip RAM.
 
 How it runs here (differences from the module, all outside these files):
 - At 44.1 kHz instead of 32 kHz: grain sizes and times are about 30 % shorter in seconds,

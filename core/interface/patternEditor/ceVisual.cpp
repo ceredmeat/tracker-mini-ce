@@ -10,6 +10,8 @@
 #include <math.h>
 #include <string.h>
 
+#include <new>
+
 #include "FT812.h"
 #include "display.h"
 #include "elapsedMillis.h"
@@ -46,7 +48,8 @@ struct Particle
     uint8_t track;
     bool alive;
 };
-Particle p[kMaxP];
+// the particles live on the heap only while Visual is on (2.3 KB of on-chip RAM otherwise)
+Particle* p = nullptr;
 float level[kTracks];   // Bars, Wave, Orbit flash
 float orbitAngle[kTracks];
 float energy = 0.0f;
@@ -85,6 +88,8 @@ int cursorTrack()
 
 Particle* spawn()
 {
+    static Particle dummy;
+    if (p == nullptr) return &dummy;
     for (int i = 0; i < kMaxP; i++)
         if (!p[i].alive) return &p[i];
     // reuse the oldest-looking one
@@ -163,6 +168,7 @@ void readSequencer()
 void step()
 {
     frame++;
+    if (p == nullptr) return;
     for (int t = 0; t < kTracks; t++)
     {
         level[t] *= 0.88f;
@@ -198,8 +204,14 @@ bool isOn() { return on; }
 
 void setOn(bool o)
 {
-    on = o;
-    memset(p, 0, sizeof(p));
+    if (o && p == nullptr) p = new (std::nothrow) Particle[kMaxP];
+    if (!o && p != nullptr)
+    {
+        delete[] p;
+        p = nullptr;
+    }
+    on = o && p != nullptr;
+    if (p != nullptr) memset(p, 0, sizeof(Particle) * kMaxP);
     memset(level, 0, sizeof(level));
     for (int t = 0; t < kTracks; t++) lastPos[t] = -1;
     wasPlaying = false;
@@ -210,7 +222,7 @@ uint8_t style() { return styleIdx; }
 void changeStyle(int dir)
 {
     styleIdx = (uint8_t)((styleIdx + kStyleCount + (dir > 0 ? 1 : -1)) % kStyleCount);
-    memset(p, 0, sizeof(p));
+    if (p != nullptr) memset(p, 0, sizeof(Particle) * kMaxP);
 }
 
 const char* styleName(uint8_t s)
@@ -232,6 +244,7 @@ bool tick()
 
 void paint(int, int x, int y, int w, int h)
 {
+    if (p == nullptr) return;
     curX = x;
     curY = y;
     curW = w;

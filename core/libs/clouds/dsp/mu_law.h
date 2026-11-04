@@ -41,7 +41,7 @@ namespace clouds {
 //   return ((u_val & 0x80) ? (0x84 - t) : (t - 0x84));
 // }
 
-extern int16_t lut_ulaw[256];
+extern const int16_t lut_ulaw[256];
 
 inline short MuLaw2Lin(uint8_t u_val) {
   return lut_ulaw[u_val];

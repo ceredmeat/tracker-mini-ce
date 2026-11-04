@@ -69,6 +69,17 @@ inline float softClip(float x) // tanh-like, exact at 0, ±1 beyond ±3
     return x * (27.0f + x2) / (27.0f + 9.0f * x2);
 }
 
+// sin(x * pi / 2) for any x: folded into -1..1 (period 4), then a 5th-order polynomial
+// (error below 0.0002; sinf per sample costs far more)
+inline float fastSinQuarter(float x)
+{
+    float t = x + 1.0f;
+    t -= 4.0f * floorf(t * 0.25f); // 0..4
+    t = t < 2.0f ? t - 1.0f : 3.0f - t; // -1..1, a triangle
+    float t2 = t * t;
+    return t * (1.5704372f + t2 * (-0.6427093f + t2 * 0.0724327f));
+}
+
 inline float quant(float x, float levels)
 {
     return floorf(x * levels + 0.5f) / levels;
@@ -110,7 +121,7 @@ struct Dirt
         switch (type)
         {
             case 1: return x > 1.0f ? 1.0f : (x < -1.0f ? -1.0f : x);   // hard
-            case 2: return sinf(x * (kPi * 0.5f));                     // fold
+            case 2: return fastSinQuarter(x);                          // fold
             case 3: return softClip(x + 0.35f) - softClip(0.35f);      // asym
             default: return softClip(x);                               // soft
         }
@@ -273,17 +284,25 @@ struct Tape
         float dry = (param(kTapeDry) > 100 ? 100 : param(kTapeDry)) / 100.0f;
         float aDc = lpCoeff(10.0f);
 
+        // the wobble (at most ~10 Hz) is worked out at the block's two ends and joined with a
+        // straight line: 6 sines a block instead of 3 a sample
+        auto delayAt = [&]() {
+            return 140.0f + wow * (0.5f + 0.5f * sinf(2.0f * kPi * wowPh)) +
+                   fl * (0.5f + 0.3f * sinf(2.0f * kPi * flPh1) + 0.2f * sinf(2.0f * kPi * flPh2));
+        };
+        float delay = delayAt();
+        wowPh += 0.55f * kN / kFs;
+        if (wowPh >= 1.0f) wowPh -= 1.0f;
+        flPh1 += 6.3f * kN / kFs;
+        if (flPh1 >= 1.0f) flPh1 -= 1.0f;
+        flPh2 += 9.7f * kN / kFs;
+        if (flPh2 >= 1.0f) flPh2 -= 1.0f;
+        float delayStep = (delayAt() - delay) / kN;
+
         float g = amount, gs = (target - amount) / kN;
         for (int i = 0; i < kN; i++)
         {
-            wowPh += 0.55f / kFs;
-            if (wowPh >= 1.0f) wowPh -= 1.0f;
-            flPh1 += 6.3f / kFs;
-            if (flPh1 >= 1.0f) flPh1 -= 1.0f;
-            flPh2 += 9.7f / kFs;
-            if (flPh2 >= 1.0f) flPh2 -= 1.0f;
-            float delay = 140.0f + wow * (0.5f + 0.5f * sinf(2.0f * kPi * wowPh)) +
-                          fl * (0.5f + 0.3f * sinf(2.0f * kPi * flPh1) + 0.2f * sinf(2.0f * kPi * flPh2));
+            delay += delayStep;
 
             float rp = (float)w - delay;
             if (rp < 0.0f) rp += kTapeLen;
@@ -333,14 +352,20 @@ struct Chorus
         float width = 1.0f - (param(kChorusNarrow) > 100 ? 100 : param(kChorusNarrow)) / 100.0f;
         float base = 500.0f; // 11 ms
 
+        // the LFO (at most 3 Hz) at the block's two ends, joined with a straight line
+        float lfo[2], lfoStep[2];
+        lfo[0] = sinf(2.0f * kPi * ph);
+        lfo[1] = sinf(2.0f * kPi * (ph + 0.25f * width)); // quadrature at full width
+        ph += rate * kN / kFs;
+        if (ph >= 1.0f) ph -= 1.0f;
+        lfoStep[0] = (sinf(2.0f * kPi * ph) - lfo[0]) / kN;
+        lfoStep[1] = (sinf(2.0f * kPi * (ph + 0.25f * width)) - lfo[1]) / kN;
+
         float g = amount, gs = (target - amount) / kN;
         for (int i = 0; i < kN; i++)
         {
-            ph += rate / kFs;
-            if (ph >= 1.0f) ph -= 1.0f;
-            float lfo[2];
-            lfo[0] = sinf(2.0f * kPi * ph);
-            lfo[1] = sinf(2.0f * kPi * (ph + 0.25f * width)); // quadrature at full width
+            lfo[0] += lfoStep[0];
+            lfo[1] += lfoStep[1];
             g += gs;
             for (int c = 0; c < 2; c++)
             {

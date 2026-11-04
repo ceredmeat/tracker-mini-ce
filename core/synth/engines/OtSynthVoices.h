@@ -2,6 +2,8 @@
 
 // tracker-mini-ce: OpenTracker synth engines (github.com/opentracker-fw/opentracker-synths,
 // MIT, Copyright (c) 2026 Marcin Spoczynski) as engines of CE's synth SDK.
+// The module sources in core/synth/opentracker/ are unchanged except ju6.cpp, whose chorus
+// lines are placed in the on-chip OCRAM (__BSS(SRAM_OC)) to keep the DTCM free.
 
 #include "PolySynth/sdk/InstrumentType.h"
 

@@ -55,10 +55,10 @@ enum Global : int
 // DX7 operator n (1..6) is stored at block 6 - n.
 constexpr int opBase(int n) { return (6 - n) * kOpFields; }
 
-const char* const kCurveNames[4] = { "-LIN", "-EXP", "+EXP", "+LIN" };
-const char* const kModeNames[2] = { "Ratio", "Fixed" };
-const char* const kOnOff[2] = { "Off", "On" };
-const char* const kWaveNames[6] = { "Triangle", "Saw Down", "Saw Up", "Square", "Sine", "S&H" };
+constexpr const char* kCurveNames[4] = { "-LIN", "-EXP", "+EXP", "+LIN" };
+constexpr const char* kModeNames[2] = { "Ratio", "Fixed" };
+constexpr const char* kOnOff[2] = { "Off", "On" };
+constexpr const char* kWaveNames[6] = { "Triangle", "Saw Down", "Saw Up", "Square", "Sine", "S&H" };
 const char* const kNoteNames[12] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
 
 enum class Fmt : uint8_t
@@ -80,17 +80,19 @@ struct Def
     const char* const* list = nullptr;
 };
 
-std::array<Def, kParamCount> makeDefs()
-{
-    std::array<Def, kParamCount> d{};
-    static const char* const kOpNames[6][kOpFields] = {
+// the operator parameters' names (constexpr: the table below is built at compile time)
+constexpr const char* kOpNames[6][kOpFields] = {
 #define OPN(n)                                                                                         \
     { n " R1",     n " R2",     n " R3",      n " R4",     n " L1",    n " L2",     n " L3",           \
       n " L4",     n " Break",  n " L Depth", n " R Depth", n " L Curve", n " R Curve", n " Rate Scl", \
       n " AMS",    n " Vel Sens", n " Level", n " Mode",   n " Coarse", n " Fine",   n " Detune" }
         OPN("Op6"), OPN("Op5"), OPN("Op4"), OPN("Op3"), OPN("Op2"), OPN("Op1"),
 #undef OPN
-    };
+};
+
+constexpr std::array<Def, kParamCount> makeDefs()
+{
+    std::array<Def, kParamCount> d{};
     for (int k = 0; k < 6; k++)
     {
         const int b = k * kOpFields;
@@ -143,7 +145,8 @@ std::array<Def, kParamCount> makeDefs()
 
 const std::array<Def, kParamCount>& defs()
 {
-    static const std::array<Def, kParamCount> d = makeDefs();
+    // tracker-mini-ce: built by the compiler, so it lives in flash, not in on-chip RAM
+    static constexpr std::array<Def, kParamCount> d = makeDefs();
     return d;
 }
 

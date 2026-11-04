@@ -75,29 +75,29 @@ struct Def
     MacroOp op = MacroOp::kAdd;
 };
 
-const char* const kOffOn[] = { "Off", "On" };
-const char* const kGlideModes[] = { "Always", "Overlap", "Legato", "Legato O." };
-const char* const kLfoWaves[] = { "Triangle", "Sine", "Ramp Up", "Ramp Down", "Square", "Random S&H" };
-const char* const kLfoRetrig[] = { "Note", "One Shot", "Free" };
-const char* const kPolarity[] = { "Bipolar", "Unipolar" };
-const char* const kSyncDivs[] = { "1",    "1/2 D", "1/2",  "1/4 D",  "1 T",   "1/4",    "1/8 D", "1/2 T",
+constexpr const char* kOffOn[] = { "Off", "On" };
+constexpr const char* kGlideModes[] = { "Always", "Overlap", "Legato", "Legato O." };
+constexpr const char* kLfoWaves[] = { "Triangle", "Sine", "Ramp Up", "Ramp Down", "Square", "Random S&H" };
+constexpr const char* kLfoRetrig[] = { "Note", "One Shot", "Free" };
+constexpr const char* kPolarity[] = { "Bipolar", "Unipolar" };
+constexpr const char* kSyncDivs[] = { "1",    "1/2 D", "1/2",  "1/4 D",  "1 T",   "1/4",    "1/8 D", "1/2 T",
                                   "1/8",  "1/16 D", "1/4 T", "1/16", "1/8 T", "1/32", "1/16 T", "1/32 T" };
 
 // WAVE
-const char* const kWaves[] = { "Formant", "Resonant", "Harmonic", "Square/PWM", "Sin/Tri/Saw/Sqr",
+constexpr const char* kWaves[] = { "Formant", "Resonant", "Harmonic", "Square/PWM", "Sin/Tri/Saw/Sqr",
                                "Sync",    "FM",       "Super Saw", "Saw" };
-const char* const kFilterTypes[] = { "LP Ladder 24", "LP OB 24",  "LP OB 12",  "LP SVF 24", "LP SVF 12",
+constexpr const char* kFilterTypes[] = { "LP Ladder 24", "LP OB 24",  "LP OB 12",  "LP SVF 24", "LP SVF 12",
                                      "HP OB 24",     "HP OB 12",  "HP SVF 24", "HP SVF 12", "BP OB 24",
                                      "BP OB 12",     "BP SVF 24", "BP SVF 12", "Notch 24",  "Notch 12" };
-const char* const kWaveSrcs[] = { "Amp Env", "Filter Env", "Mod Env", "LFO 1", "LFO 2", "Velocity", "Key" };
-const char* const kWaveDests[] = { "Position", "Position 1", "Position 2", "Pitch", "Pitch 1", "Pitch 2",
+constexpr const char* kWaveSrcs[] = { "Amp Env", "Filter Env", "Mod Env", "LFO 1", "LFO 2", "Velocity", "Key" };
+constexpr const char* kWaveDests[] = { "Position", "Position 1", "Position 2", "Pitch", "Pitch 1", "Pitch 2",
                                    "Mix",      "Cutoff",     "Resonance",  "Volume", "Noise" };
 // PHASE
-const char* const kShapes[] = { "Saw", "Square", "Pulse", "Double Sine", "Saw-Pulse", "Reso I", "Reso II", "Reso III" };
-const char* const kPairs[] = { "Off",       "Saw",    "Square",  "Pulse",   "Double Sine",
+constexpr const char* kShapes[] = { "Saw", "Square", "Pulse", "Double Sine", "Saw-Pulse", "Reso I", "Reso II", "Reso III" };
+constexpr const char* kPairs[] = { "Off",       "Saw",    "Square",  "Pulse",   "Double Sine",
                                "Saw-Pulse", "Reso I", "Reso II", "Reso III" };
-const char* const kPhaseSrcs[] = { "DCA Env", "DCW Env", "DCO Env", "LFO 1", "LFO 2", "Velocity", "Key" };
-const char* const kPhaseDests[] = { "Pitch", "Pitch 1", "Pitch 2", "DCW", "DCW 1", "DCW 2", "Mix", "Volume", "Detune" };
+constexpr const char* kPhaseSrcs[] = { "DCA Env", "DCW Env", "DCO Env", "LFO 1", "LFO 2", "Velocity", "Key" };
+constexpr const char* kPhaseDests[] = { "Pitch", "Pitch 1", "Pitch 2", "DCW", "DCW 1", "DCW 2", "Mix", "Volume", "Detune" };
 
 #define LIST(names) Fmt::kList, names, static_cast<uint8_t>(std::size(names))
 
@@ -119,7 +119,12 @@ constexpr Def kChorusDefs[4] = {
     { "Chorus Mix", 0.5f, 0.0f, 1.0f, Fmt::kPercent },
 };
 
-std::array<Def, kParamCount> makeWaveDefs()
+// the mod matrix slots' names (constexpr: the tables below are built at compile time)
+constexpr const char* srcNames[6] = { "Src 1", "Src 2", "Src 3", "Src 4", "Src 5", "Src 6" };
+constexpr const char* dstNames[6] = { "Dest 1", "Dest 2", "Dest 3", "Dest 4", "Dest 5", "Dest 6" };
+constexpr const char* amtNames[6] = { "Amt 1", "Amt 2", "Amt 3", "Amt 4", "Amt 5", "Amt 6" };
+
+constexpr std::array<Def, kParamCount> makeWaveDefs()
 {
     std::array<Def, kParamCount> d{};
     d[0] = { "Position 1", 0.6667f, 0.0f, 1.0f, Fmt::kPercent };
@@ -162,9 +167,6 @@ std::array<Def, kParamCount> makeWaveDefs()
     d[37] = { "LFO 2 Wave", 1.0f, 0.0f, 5.0f, LIST(kLfoWaves) };
     d[38] = { "LFO 2 Retrig", 2.0f, 0.0f, 2.0f, LIST(kLfoRetrig) };
     d[39] = { "LFO 2 Sync", 0.0f, 0.0f, 1.0f, LIST(kOffOn) };
-    static const char* const srcNames[6] = { "Src 1", "Src 2", "Src 3", "Src 4", "Src 5", "Src 6" };
-    static const char* const dstNames[6] = { "Dest 1", "Dest 2", "Dest 3", "Dest 4", "Dest 5", "Dest 6" };
-    static const char* const amtNames[6] = { "Amt 1", "Amt 2", "Amt 3", "Amt 4", "Amt 5", "Amt 6" };
     for (int s = 0; s < 6; s++)
     {
         float src = s == 0 ? 3.0f : (s == 1 ? 2.0f : 0.0f); // LFO 1, Mod Env: routings to try
@@ -180,7 +182,7 @@ std::array<Def, kParamCount> makeWaveDefs()
     return d;
 }
 
-std::array<Def, kParamCount> makePhaseDefs()
+constexpr std::array<Def, kParamCount> makePhaseDefs()
 {
     std::array<Def, kParamCount> d{};
     d[0] = { "Wave 1+", 0.0f, 0.0f, 8.0f, LIST(kPairs) };
@@ -224,9 +226,6 @@ std::array<Def, kParamCount> makePhaseDefs()
     d[38] = { "Env Amt 2", 0.3f, -1.0f, 1.0f, Fmt::kSignedPercent };
     d[39] = { "Noise Mod", 0.0f, 0.0f, 1.0f, Fmt::kPercent };
     d[40] = { "DCO Env Amt", 0.0f, -48.0f, 48.0f, Fmt::kSemis };
-    static const char* const srcNames[6] = { "Src 1", "Src 2", "Src 3", "Src 4", "Src 5", "Src 6" };
-    static const char* const dstNames[6] = { "Dest 1", "Dest 2", "Dest 3", "Dest 4", "Dest 5", "Dest 6" };
-    static const char* const amtNames[6] = { "Amt 1", "Amt 2", "Amt 3", "Amt 4", "Amt 5", "Amt 6" };
     for (int s = 0; s < 6; s++)
     {
         float src = s == 0 ? 3.0f : (s == 1 ? 4.0f : 0.0f); // LFO 1 -> Pitch, LFO 2 -> DCW
@@ -486,13 +485,14 @@ class CeSynthVoice : public sdk::CustomSynthVoice<CeSynthVoice<Engine>, CeParamI
 
     static const std::array<Def, kParamCount>& waveDefs()
     {
-        static const std::array<Def, kParamCount> defs = makeWaveDefs();
+        // tracker-mini-ce: built by the compiler, so it lives in flash, not in on-chip RAM
+        static constexpr std::array<Def, kParamCount> defs = makeWaveDefs();
         return defs;
     }
 
     static const std::array<Def, kParamCount>& phaseDefs()
     {
-        static const std::array<Def, kParamCount> defs = makePhaseDefs();
+        static constexpr std::array<Def, kParamCount> defs = makePhaseDefs();
         return defs;
     }
 

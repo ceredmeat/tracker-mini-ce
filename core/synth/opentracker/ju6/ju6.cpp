@@ -99,6 +99,11 @@ struct SlotState {
 static_assert(sizeof(SlotState) <= kSynthSlotScratchBytes, "JU6 slot scratch");
 
 // The chorus lines, one per synth slot (.bss, ModuleInfo sramAudioBytes).
+// tracker-mini-ce: in the on-chip OCRAM (zeroed at start-up like .bss), not the DTCM
+#ifdef PLATFORM_IMX
+#include "cr_section_macros.h"
+__BSS(SRAM_OC)
+#endif
 int16_t gChorusLine[kSynthSlots][bbd::kLine];
 constexpr uint8_t kChorusTone = 50;   // the BBD filters at ~8.5 kHz
 

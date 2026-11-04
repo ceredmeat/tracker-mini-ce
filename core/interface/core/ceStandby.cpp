@@ -14,6 +14,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <memory>
+#include <new>
+
 #include "Platform.h"
 #include "ThemeManager.h"
 #include "TrackerImpl.h"
@@ -108,8 +111,16 @@ void paint()
 // the n-th .jpg / .jpeg in the folder (name order), without its extension
 bool pictureName(uint8_t n, char* out, int len, char* full, int fullLen)
 {
-    static char names[kMaxFiles * 40];
-    static char* list[kMaxFiles];
+    // the list is only needed here: on the heap for a moment, not in on-chip RAM for good
+    struct Lists
+    {
+        char names[kMaxFiles * 40];
+        char* list[kMaxFiles];
+    };
+    std::unique_ptr<Lists> L(new (std::nothrow) Lists);
+    if (!L) return false;
+    char* names = L->names;
+    char** list = L->list;
     int count = kMaxFiles;
     fs()->listDirContents(
       kFolder,
@@ -121,7 +132,7 @@ bool pictureName(uint8_t n, char* out, int len, char* full, int fullLen)
                  (l > 5 && strcasecmp(name + l - 5, ".jpeg") == 0);
       },
       names,
-      sizeof(names),
+      sizeof(L->names),
       38,
       count,
       list);
